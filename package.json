@@ -1,0 +1,143 @@
+{
+  "name": "js-heap-comparator",
+  "version": "0.0.0-development",
+  "description": "Compare heaps from JS runtimes",
+  "type": "module",
+  "exports": "./lib/index.js",
+  "types": "./lib/index.d.ts",
+  "files": [
+    "lib/**/*"
+  ],
+  "scripts": {
+    "build": "tsc --project tsconfig.build.json",
+    "clean": "rm -rf ./lib/",
+    "cm": "cz",
+    "lint": "xo ./src/ --fix",
+    "lint:tests": "xo ./test/ --fix",
+    "prepare": "husky install",
+    "semantic-release": "semantic-release",
+    "test:watch": "jest --watch",
+    "test": "export NODE_OPTIONS='$NODE_OPTIONS --experimental-vm-modules' && jest --coverage",
+    "typecheck": "tsc --noEmit"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ntrotner/js-heap-comparator.git"
+  },
+  "keywords": [
+    "javascript",
+    "v8",
+    "heap",
+    "memory leak"
+  ],
+  "license": "MIT",
+  "author": {
+    "name": "Nikita Trotner",
+    "email": "ntrotner@users.noreply.github.com",
+    "url": "https://github.com/ntrotner"
+  },
+  "engines": {
+    "node": ">=20.0"
+  },
+  "bugs": {
+    "url": "https://github.com/ntrotner/js-heap-comparator/issues"
+  },
+  "homepage": "https://github.com/ntrotner/js-heap-comparator#readme",
+  "dependencies": {
+  },
+  "devDependencies": {
+    "@ryansonshine/commitizen": "^4.2.8",
+    "@ryansonshine/cz-conventional-changelog": "^3.3.4",
+    "@types/jest": "^29.5.0",
+    "@types/node": "^20.14.8",
+    "conventional-changelog-conventionalcommits": "^8.0.0",
+    "eslint-plugin-import-newlines": "^1.4.0",
+    "husky": "^9.1.4",
+    "jest": "^29.7.0",
+    "lint-staged": "^15.2.9",
+    "semantic-release": "^24.0.0",
+    "ts-jest": "^29.2.4",
+    "ts-node": "^10.2.1",
+    "typescript": "^5.5.4",
+    "xo": "^0.59.3"
+  },
+  "config": {
+    "commitizen": {
+      "path": "./node_modules/@ryansonshine/cz-conventional-changelog"
+    }
+  },
+  "lint-staged": {
+    "!(test/**/*)*.ts": "xo ./src/--fix"
+  },
+  "release": {
+    "branches": [
+      "main"
+    ],
+    "plugins": [
+      [
+        "@semantic-release/commit-analyzer",
+        {
+          "preset": "conventionalcommits",
+          "releaseRules": [
+            {
+              "type": "chore",
+              "release": "patch"
+            },
+            {
+              "type": "fix",
+              "release": "patch"
+            },
+            {
+              "type": "feat",
+              "release": "minor"
+            },
+            {
+              "type": "build",
+              "release": "major"
+            }
+          ]
+        }
+      ],
+      [
+        "@semantic-release/release-notes-generator",
+        {
+          "preset": "conventionalcommits",
+          "presetConfig": {
+            "types": [
+              {
+                "type": "feat",
+                "section": "Features"
+              },
+              {
+                "type": "fix",
+                "section": "Bug Fixes"
+              },
+              {
+                "type": "build",
+                "section": "Dependencies and Other Build Updates",
+                "hidden": false
+              }
+            ]
+          }
+        }
+      ],
+      "@semantic-release/npm",
+      "@semantic-release/github"
+    ]
+  },
+  "xo": {
+    "rules": {
+      "new-cap": 0,
+      "no-async-promise-executor": 0,
+      "import-newlines/enforce": ["error", { "items": 1 }],
+      "unicorn/prefer-logical-operator-over-ternary": 0,
+      "@typescript-eslint/no-empty-function": 0,
+      "@typescript-eslint/class-literal-property-style": 0,
+      "@typescript-eslint/no-extraneous-class": 0
+    },
+    "plugins": [
+      "import-newlines"
+    ],
+    "space": true
+  }
+}
