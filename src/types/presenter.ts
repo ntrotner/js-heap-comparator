@@ -1,5 +1,6 @@
 import {
   type DisjunctTracker,
+  type NextBestMatchTracker,
   type PerfectMatchTracker,
 } from './comparator.js';
 import type {
@@ -45,6 +46,16 @@ export type BasePerfectMatchPresenterOptions = BaseComparisonPresenterOptions & 
  * Interface for presenter that reports the perfect match comparison result.
  */
 export type BasePerfectMatchPresenter = BaseComparisonPresenter<Map<string, PerfectMatchTracker>, BasePerfectMatchPresenterOptions>;
+
+/**
+ * Options for next best match comparison presenter.
+ */
+export type BaseNextBestMatchPresenterOptions = BaseComparisonPresenterOptions & {filePath: string; fileName: string};
+
+/**
+ * Interface for presenter that reports the next best match comparison result.
+ */
+export type BaseNextBestMatchPresenter = BaseComparisonPresenter<NextBestMatchTracker, BaseNextBestMatchPresenterOptions>;
 
 /**
  * Options for the disjunct nodes comparison presenter.

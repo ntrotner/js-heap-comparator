@@ -61,7 +61,7 @@ export class DisjunctNodesPresenter<T extends BaseComparisonNodesInput> implemen
         await this.jsonWriter.write({
           type: 'currentNode',
           nextValue: util.inspect(this.currentValues.get(value) ?? {}, {
-            compact: true, depth: 4, breakLength: Infinity, colors: false,
+            compact: true, depth: 20, breakLength: Infinity, colors: false,
           }),
         });
       } catch {}
@@ -72,7 +72,7 @@ export class DisjunctNodesPresenter<T extends BaseComparisonNodesInput> implemen
         await this.jsonWriter.write({
           type: 'nextNode',
           nextValue: util.inspect(this.nextValues.get(value) ?? {}, {
-            compact: true, depth: 4, breakLength: Infinity, colors: false,
+            compact: true, depth: 20, breakLength: Infinity, colors: false,
           }),
         });
       } catch {}

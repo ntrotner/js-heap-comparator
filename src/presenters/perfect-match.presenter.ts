@@ -63,10 +63,10 @@ export class PerfectMatchPresenter<T extends BaseComparisonNodesInput> implement
         currentNodeIds: [...value.currentNodeId],
         nextNodeIds: [...value.nextNodeId],
         currentValues: [...value.currentNodeId].map(id => util.inspect(this.currentValues.get(id), {
-          compact: true, depth: 4, breakLength: Infinity, colors: false,
+          compact: true, depth: 20, breakLength: Infinity, colors: false,
         })),
         nextValues: [...value.nextNodeId].map(id => util.inspect(this.nextValues.get(id), {
-          compact: true, depth: 4, breakLength: Infinity, colors: false,
+          compact: true, depth: 20, breakLength: Infinity, colors: false,
         })),
       });
     }

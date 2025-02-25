@@ -13,6 +13,7 @@ import {
 import {
   DisjunctNodesPresenter,
   PerfectMatchPresenter,
+  NextBestMatchPresenter,
 } from '../../presenters/index.js';
 
 export class V8Comparator implements BaseHeapComparator {
@@ -21,6 +22,7 @@ export class V8Comparator implements BaseHeapComparator {
    */
   private options: BaseHeapComparatorOptions = {
     presenterFilePath: './',
+    nextBestMatchObjectThreshold: 0.7,
   };
 
   /**
@@ -53,6 +55,7 @@ export class V8Comparator implements BaseHeapComparator {
     objectComparator.initialize(
       currentHeapNodesDeepFilled.map(([nodeId, objectRecord]) => ({nodeId, node: objectRecord})),
       nextHeapNodesDeepFilled.map(([nodeId, objectRecord]) => ({nodeId, node: objectRecord})),
+      {nextBestMatchThreshold: this.options.nextBestMatchObjectThreshold},
     );
     const objectComparatorResults = await objectComparator.compare();
 
@@ -60,6 +63,10 @@ export class V8Comparator implements BaseHeapComparator {
     const perfectMatchPresenter = new PerfectMatchPresenter();
     perfectMatchPresenter.initialize(currentHeapNodesMap, nextHeapNodesMap, objectComparatorResults.perfectMatchNodes, {...fileWriterOptions, fileName: 'perfect-match.json'});
     await perfectMatchPresenter.report();
+
+    const nextBestMatchPresenter = new NextBestMatchPresenter();
+    nextBestMatchPresenter.initialize(currentHeapNodesMap, nextHeapNodesMap, objectComparatorResults.nextBestMatchNodes, {...fileWriterOptions, fileName: 'next-best-match.json'});
+    await nextBestMatchPresenter.report();
 
     const disjunctNodesPresenter = new DisjunctNodesPresenter();
     disjunctNodesPresenter.initialize(currentHeapNodesMap, nextHeapNodesMap, objectComparatorResults.disjunctNodes, {...fileWriterOptions, fileName: 'disjunct-nodes.json'});

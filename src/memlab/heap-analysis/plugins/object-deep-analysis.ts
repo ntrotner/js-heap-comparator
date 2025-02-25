@@ -13,6 +13,9 @@ import {
   type ObjectMap
 } from "../../../types/index.js";
 import hash from 'object-hash';
+import {
+  cleanCircularReferences
+} from "../../../helpers/index.js";
 
 // @ts-ignore
 export class ObjectDeepAnalysis extends Memlab.ObjectShallowAnalysis {
@@ -44,6 +47,12 @@ export class ObjectDeepAnalysis extends Memlab.ObjectShallowAnalysis {
         return {stop: true};
       }
     });
+
+    // START CUSTOM: do not ignore arrays
+    if (node.type === 'array') {
+      return false;
+    }
+    // END CUSTOM: do not ignore arrays
 
     return !(
       !hasAHiddenReferrer &&
@@ -143,7 +152,7 @@ export class ObjectDeepAnalysis extends Memlab.ObjectShallowAnalysis {
         }
 
         // START CUSTOM: add additional checks for types
-        if (['array', 'Array'].includes(value.name)) {
+        if (['array', 'Array'].includes(value.name) || value.type === 'array') {
           result[key] = value.references.filter(reference => reference.type === 'element').map(edge => 'REFERENCE_' + edge.toNode.id);
         } else if (value.type === 'hidden' || value.type === 'native' || value.type === 'synthetic' || value.type === 'symbol') {
           delete result[key];
@@ -227,6 +236,10 @@ export class ObjectDeepAnalysis extends Memlab.ObjectShallowAnalysis {
           Object.assign(liveObject, {[key]: value});
         }
       });
+
+      if (typeof object.obj.object === 'object') {
+        cleanCircularReferences(object.obj.object, CustomNodeType.CircularReference);
+      }
     });
 
     this.deepFilledObjects = objectMapRef;
@@ -250,8 +263,11 @@ export class ObjectDeepAnalysis extends Memlab.ObjectShallowAnalysis {
       } else {
         this.ignoredNodesMap.set(node.id, node.name);
       }
-    } else if (node.name === '(concatenated string)' && node.type === 'concatenated string') {
-      const concatenatedString = node.references
+    } else if (
+      (node.name === '(concatenated string)' && node.type === 'concatenated string') ||
+      (node.name === '(sliced string)' && node.type === 'sliced string')
+    ) {
+      const modifiedString = node.references
         .filter(({type}) => type !== 'hidden')
         .map(({toNode}) => {
         if (toNode.type === 'string') {
@@ -261,8 +277,30 @@ export class ObjectDeepAnalysis extends Memlab.ObjectShallowAnalysis {
         })
         .join('');
 
-      this.ignoredNodesMap.set(node.id, concatenatedString);
+      this.ignoredNodesMap.set(node.id, modifiedString);
+    } else if (node.type === 'code') {
+      this.ignoredNodesMap.set(node.id, node.name);
+    } else if (node.type === 'synthetic') {
+      this.ignoredNodesMap.set(node.id, node.name);
+    } else if (node.type === 'object shape') {
+      this.ignoredNodesMap.set(node.id, node.name);
+    } else if (node.type === 'regexp') {
+      this.ignoredNodesMap.set(node.id, node.name);
+    } else if (node.type === 'symbol') {
+      this.ignoredNodesMap.set(node.id, node.name);
+    } else if (node.type === 'sliced string') {
+      const slicedString = node.references
+        .filter(({type}) => type !== 'hidden')
+        .map(({toNode}) => {
+          if (toNode.type === 'string') {
+            return toNode.name;
+          }
+          return '';
+        })
+        .join('');
+      this.ignoredNodesMap.set(node.id, slicedString);
     } else {
+      console.log('Unknown node type:', node.toJSONString());
       this.ignoredNodesMap.set(node.id, node.toJSONString());
     }
   }

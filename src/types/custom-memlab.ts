@@ -18,4 +18,5 @@ export type IgnoredNodesMap = Map<number, string | number>;
 export enum CustomNodeType {
   ObjectConstructor = 'OBJECT_CONSTRUCTOR',
   NaNValue = 'NAN_VALUE_SANITIZED',
+  CircularReference = 'CIRCULAR_REFERENCE_SANITIZED',
 }
