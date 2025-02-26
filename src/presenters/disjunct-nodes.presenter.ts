@@ -58,9 +58,10 @@ export class DisjunctNodesPresenter<T extends BaseComparisonNodesInput> implemen
   async report(): Promise<void> {
     for (const value of this.disjunctNodes.currentNodeId.values()) {
       try {
+        const valueToPrint = this.currentValues.get(value);
         await this.jsonWriter.write({
           type: 'currentNode',
-          nextValue: util.inspect(this.currentValues.get(value) ?? {}, {
+          nextValue: util.inspect({n: valueToPrint?.n, size: valueToPrint?.size, obj: valueToPrint?.obj}, {
             compact: true, depth: 20, breakLength: Infinity, colors: false,
           }),
         });
@@ -69,9 +70,10 @@ export class DisjunctNodesPresenter<T extends BaseComparisonNodesInput> implemen
 
     for (const value of this.disjunctNodes.nextNodeId.values()) {
       try {
+        const valueToPrint = this.nextValues.get(value);
         await this.jsonWriter.write({
           type: 'nextNode',
-          nextValue: util.inspect(this.nextValues.get(value) ?? {}, {
+          nextValue: util.inspect({n: valueToPrint?.n, size: valueToPrint?.size, obj: valueToPrint?.obj}, {
             compact: true, depth: 20, breakLength: Infinity, colors: false,
           }),
         });

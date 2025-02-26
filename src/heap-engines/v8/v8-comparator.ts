@@ -23,13 +23,18 @@ export class V8Comparator implements BaseHeapComparator {
   private options: BaseHeapComparatorOptions = {
     presenterFilePath: './',
     nextBestMatchObjectThreshold: 0.7,
+    threads: 1,
   };
 
   /**
    * @inheritdoc
    */
   initialize(options: BaseHeapComparatorOptions): void {
-    this.options = options;
+    this.options = {
+      ...this.options,
+      ...options,
+    };
+    console.dir('V8Comparator initialized with options: ' + JSON.stringify(this.options));
   }
 
   /**
@@ -55,7 +60,7 @@ export class V8Comparator implements BaseHeapComparator {
     objectComparator.initialize(
       currentHeapNodesDeepFilled.map(([nodeId, objectRecord]) => ({nodeId, node: objectRecord})),
       nextHeapNodesDeepFilled.map(([nodeId, objectRecord]) => ({nodeId, node: objectRecord})),
-      {nextBestMatchThreshold: this.options.nextBestMatchObjectThreshold},
+      {nextBestMatchThreshold: this.options.nextBestMatchObjectThreshold, threads: this.options.threads},
     );
     const objectComparatorResults = await objectComparator.compare();
 

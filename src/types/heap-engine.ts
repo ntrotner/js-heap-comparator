@@ -17,6 +17,7 @@ export type HeapComparisonResult = {
 export type BaseHeapComparatorOptions = {
   presenterFilePath: string;
   nextBestMatchObjectThreshold: number;
+  threads: number;
 };
 
 /**
