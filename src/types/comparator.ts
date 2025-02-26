@@ -1,3 +1,20 @@
+import type {
+  ObjectRecord,
+} from './custom-memlab.js';
+
+/**
+ * Interface for node input.
+ */
+export type NodeInput = {
+  nodeId: number;
+  node: ObjectRecord;
+};
+
+/**
+ * Interface for fuzzy equal similarity.
+ */
+export type FuzzyEqualSimilarity = {similarity: number; currentValueNodeId: number; nextValueNodeId: number};
+
 /**
  * Base interface for all match tracker implementations.
  */
