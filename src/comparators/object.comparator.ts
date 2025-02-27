@@ -2,6 +2,9 @@ import {
   deepEqual,
 } from 'fast-equals';
 import {
+  sort,
+} from 'fast-sort';
+import {
   type BaseComparator,
   type BaseComparisonResult,
   type FuzzyEqualComparison,
@@ -73,22 +76,36 @@ export class ObjectComparator<T extends NodeInput> implements BaseComparator<T, 
    */
   public async compare(): Promise<BaseComparisonResult> {
     console.log('Starting perfect match search');
-    const currentValuesLength = this.currentValues.length;
+    let currentValuesLength = this.currentValues.length;
     for (const [i, value] of this.currentValues.entries()) {
       this.findPerfectMatch(value);
 
       if (i % 1000 === 0) {
         this.debug();
-        console.log(`Progress ${(i / currentValuesLength * 100).toFixed(2)}%`);
+        console.log(`Progress: ${(i / currentValuesLength * 100).toFixed(2)}%`);
       }
     }
 
     this.debug();
     console.log('Finished perfect match search');
-
     console.log('Starting next best match search');
-    const bestMatchesHub = new NextBestFitHub(this.currentValues, this.nextValues, {threads: this.threads, threshold: this.threshold});
-    const bestMatches = await bestMatchesHub.runComparison();
+    currentValuesLength = this.currentValues.length;
+    let bestMatches = [];
+    if (this.threads <= 1) {
+      for (const [i, value] of this.currentValues.entries()) {
+        bestMatches.push(...this.findNextBestMatches(value));
+
+        if (i % 1000 === 0) {
+          this.debug();
+          console.log(`Progress: ${(i / currentValuesLength * 100).toFixed(2)}%`);
+        }
+      }
+    } else {
+      const bestMatchesHub = new NextBestFitHub(this.currentValues, this.nextValues, {threads: this.threads, threshold: this.threshold});
+      bestMatches = await bestMatchesHub.runComparison();
+    }
+
+    console.log('Finished aggregation of matches');
     this.selectNextBestMatches(bestMatches);
     console.log('Finished next best match search');
 
@@ -157,7 +174,7 @@ export class ObjectComparator<T extends NodeInput> implements BaseComparator<T, 
    * @param matches
    */
   private selectNextBestMatches(matches: FuzzyEqualSimilarity[]): void {
-    const descendingSortedMatches = matches.sort((a, b) => b.similarity - a.similarity);
+    const descendingSortedMatches = sort(matches).desc(match => match.similarity);
     const usedCurrentNodes = new Set<number>();
     const usedNextNodes = new Set<number>();
 
