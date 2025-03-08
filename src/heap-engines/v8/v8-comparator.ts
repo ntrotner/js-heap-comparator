@@ -14,6 +14,7 @@ import {
   DisjunctNodesPresenter,
   PerfectMatchPresenter,
   NextBestMatchPresenter,
+  StatisticsPresenter,
 } from '../../presenters/index.js';
 
 export class V8Comparator implements BaseHeapComparator {
@@ -21,6 +22,12 @@ export class V8Comparator implements BaseHeapComparator {
    * Comparator options.
    */
   private options: BaseHeapComparatorOptions = {
+    activePresenter: {
+      statistics: true,
+      perfectMatch: false,
+      nextBestMatch: false,
+      disjunctNodes: false,
+    },
     presenterFilePath: './',
     nextBestMatchObjectThreshold: 0.7,
     threads: 1,
@@ -34,7 +41,7 @@ export class V8Comparator implements BaseHeapComparator {
       ...this.options,
       ...options,
     };
-    console.dir('V8Comparator initialized with options: ' + JSON.stringify(this.options));
+    console.log('V8Comparator initialized with options: ' + JSON.stringify(this.options));
   }
 
   /**
@@ -65,21 +72,29 @@ export class V8Comparator implements BaseHeapComparator {
     const objectComparatorResults = await objectComparator.compare();
 
     const fileWriterOptions = {filePath: this.options.presenterFilePath};
-    const perfectMatchPresenter = new PerfectMatchPresenter();
-    perfectMatchPresenter.initialize(currentHeapNodesMap, nextHeapNodesMap, objectComparatorResults.perfectMatchNodes, {...fileWriterOptions, fileName: 'perfect-match.json'});
-    await perfectMatchPresenter.report();
 
-    const nextBestMatchPresenter = new NextBestMatchPresenter();
-    nextBestMatchPresenter.initialize(currentHeapNodesMap, nextHeapNodesMap, objectComparatorResults.nextBestMatchNodes, {...fileWriterOptions, fileName: 'next-best-match.json'});
-    await nextBestMatchPresenter.report();
+    if (this.options.activePresenter.perfectMatch) {
+      const perfectMatchPresenter = new PerfectMatchPresenter();
+      perfectMatchPresenter.initialize(currentHeapNodesMap, nextHeapNodesMap, objectComparatorResults.perfectMatchNodes, {...fileWriterOptions, fileName: 'perfect-match.json'});
+      await perfectMatchPresenter.report();
+    }
 
-    const disjunctNodesPresenter = new DisjunctNodesPresenter();
-    disjunctNodesPresenter.initialize(currentHeapNodesMap, nextHeapNodesMap, objectComparatorResults.disjunctNodes, {...fileWriterOptions, fileName: 'disjunct-nodes.json'});
-    await disjunctNodesPresenter.report();
+    if (this.options.activePresenter.nextBestMatch) {
+      const nextBestMatchPresenter = new NextBestMatchPresenter();
+      nextBestMatchPresenter.initialize(currentHeapNodesMap, nextHeapNodesMap, objectComparatorResults.nextBestMatchNodes, {...fileWriterOptions, fileName: 'next-best-match.json'});
+      await nextBestMatchPresenter.report();
+    }
 
-    return {
-      nodes: [],
-      edges: [],
-    };
+    if (this.options.activePresenter.disjunctNodes) {
+      const disjunctNodesPresenter = new DisjunctNodesPresenter();
+      disjunctNodesPresenter.initialize(currentHeapNodesMap, nextHeapNodesMap, objectComparatorResults.disjunctNodes, {...fileWriterOptions, fileName: 'disjunct-nodes.json'});
+      await disjunctNodesPresenter.report();
+    }
+
+    if (this.options.activePresenter.statistics) {
+      const statisticsPresenter = new StatisticsPresenter();
+      statisticsPresenter.initialize(currentHeapNodesMap, nextHeapNodesMap, objectComparatorResults, {...fileWriterOptions, fileName: 'statistics.json'});
+      await statisticsPresenter.report();
+    }
   }
 }

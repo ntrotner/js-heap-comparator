@@ -21,7 +21,7 @@ import {
 } from '../helpers/index.js';
 import {
   NextBestFitHub,
-} from '../workers/index.js';
+} from './workers/index.js';
 
 type Options = {
   nextBestMatchThreshold: number;
@@ -225,32 +225,16 @@ export class ObjectComparator<T extends NodeInput> implements BaseComparator<T, 
    * Debugging method to log the current state of the comparison.
    */
   private debug(): void {
-    const perfectMatchCounter = {totalCurrentNode: 0, totalNextNode: 0};
+    const perfectMatchCounter = {current: 0, next: 0};
     for (const [_, value] of this.results.perfectMatchNodes.entries()) {
-      perfectMatchCounter.totalCurrentNode += value.currentNodeId.size;
-      perfectMatchCounter.totalNextNode += value.nextNodeId.size;
-    }
-
-    const nextBestMatchCounter = Object.fromEntries(
-      Object.entries(getDefaultValueOfNextBestMatchTracker()).map(([key]) => [key, {totalCurrentNode: 0, totalNextNode: 0}]),
-    ) as Record<keyof NextBestMatchTracker, {totalCurrentNode: number; totalNextNode: number}>;
-
-    for (const similarity of (Object.keys(this.results.nextBestMatchNodes) as unknown as Array<keyof NextBestMatchTracker>)) {
-      for (const [_, value] of this.results.nextBestMatchNodes[similarity].entries()) {
-        nextBestMatchCounter[similarity].totalCurrentNode += value.currentNodeId.size;
-        nextBestMatchCounter[similarity].totalNextNode += value.nextNodeId.size;
-      }
+      perfectMatchCounter.current += value.currentNodeId.size;
+      perfectMatchCounter.next += value.nextNodeId.size;
     }
 
     console.log('----------');
     console.log('Amount of unique objects:', this.results.perfectMatchNodes.size);
     console.log('Perfect matches:', perfectMatchCounter);
-    console.log('Next best matches:', nextBestMatchCounter);
-    console.log('');
-    console.log('Available current nodes:', this.currentValues.length);
-    console.log('Available next nodes:', this.nextValues.length);
-    console.log('');
-    console.log('Disjunct current nodes:', this.results.disjunctNodes.currentNodeId.size);
-    console.log('Disjunct next nodes:', this.results.disjunctNodes.nextNodeId.size);
+    console.log('Disjunct nodes:', {current: this.results.disjunctNodes.currentNodeId.size, next: this.results.disjunctNodes.nextNodeId.size});
+    console.log('Available nodes:', {current: this.currentValues.length, next: this.nextValues.length});
   }
 }

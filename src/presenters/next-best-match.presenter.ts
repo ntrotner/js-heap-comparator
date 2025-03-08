@@ -57,11 +57,8 @@ export class NextBestMatchPresenter<T extends BaseComparisonNodesInput> implemen
   async report(): Promise<void> {
     for (const similarity of Object.keys(this.nextBestMatch)) {
       for (const [key, value] of this.nextBestMatch[similarity as unknown as keyof NextBestMatchTracker].entries()) {
-        if (value.currentNodeId.size === value.nextNodeId.size) {
-          continue;
-        }
-
         await this.jsonWriter.write({
+          similarity,
           currentNodeIds: [...value.currentNodeId],
           nextNodeIds: [...value.nextNodeId],
           currentValues: [...value.currentNodeId].map(id => util.inspect(this.currentValues.get(id), {
