@@ -4,13 +4,13 @@ import {
 import {
   type FuzzyEqualSimilarity,
   type NodeInput,
-} from '../../types/index.js';
+} from '../../../types/index.js';
 import {
   type NextBestFitResponse,
 } from '../types/next-best-fit.js';
 import {
   writeToStream,
-} from '../../helpers/index.js';
+} from '../../../helpers/index.js';
 
 type Options = {
   threads: number;
@@ -53,7 +53,7 @@ export class NextBestFitHub {
 
       try {
         // TODO: adjust the path to the spoke file
-        const worker = new Worker('./lib/workers/spokes/next-best-fit.spoke.js', {stdout: true, stdin: true, stderr: true});
+        const worker = new Worker('./lib/comparators/workers/spokes/next-best-fit.spoke.js', {stdout: true, stdin: true, stderr: true});
 
         worker.stdout.addListener('data', async (data: string) => {
           try {

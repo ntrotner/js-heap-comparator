@@ -1,7 +1,7 @@
 import type {
   FuzzyEqualSimilarity,
   NodeInput,
-} from '../../types/index.js';
+} from '../../../types/index.js';
 
 /**
  * Request for the next best fit comparison.

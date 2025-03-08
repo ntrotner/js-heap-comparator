@@ -55,10 +55,6 @@ export class PerfectMatchPresenter<T extends BaseComparisonNodesInput> implement
    */
   async report(): Promise<void> {
     for (const [key, value] of this.perfectMatch.entries()) {
-      if (value.currentNodeId.size === value.nextNodeId.size) {
-        continue;
-      }
-
       await this.jsonWriter.write({
         currentNodeIds: [...value.currentNodeId],
         nextNodeIds: [...value.nextNodeId],

@@ -110,6 +110,8 @@ export class ObjectDeepAnalysis extends Memlab.ObjectShallowAnalysis {
       record.ids.push(node.id);
       // CUSTOM: track node to object reference
       objectMapRef.set(node.id, objectMap[value]);
+      // CUSTOM: set shallow size
+      record.shallowSize = node.self_size;
     });
     // CUSTOM: fill shallow objects with references
     this.deepFillObjectMap(snapshot, objectMapRef);

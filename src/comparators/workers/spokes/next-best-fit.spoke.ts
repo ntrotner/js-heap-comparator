@@ -3,11 +3,11 @@ import {
   type FuzzyEqualComparison,
   type FuzzyEqualSimilarity,
   type NodeInput,
-} from '../../types/index.js';
+} from '../../../types/index.js';
 import {
   fuzzyEqual,
   writeToStream,
-} from '../../helpers/index.js';
+} from '../../../helpers/index.js';
 import {
   type NextBestFitRequest,
 } from '../types/next-best-fit.js';
@@ -26,7 +26,7 @@ process.stdin.on('data', async (rawInput: string) => {
   await writeToStream(process.stdout, JSON.stringify({info: `${currentValues.length} current values and ${nextValues.length} next values received`}) + '\n');
   for (const [index, currentValue] of currentValues.entries()) {
     if (index % 100 === 0) {
-      await writeToStream(process.stdout, JSON.stringify({info: `[PID: ${process.pid}] Progress: ${(index / currentValues.length * 100).toFixed(2)}%`}) + '\n');
+      await writeToStream(process.stdout, JSON.stringify({info: `Progress: ${(index / currentValues.length * 100).toFixed(2)}%`}) + '\n');
     }
 
     for (const nextValue of nextValues) {
@@ -45,6 +45,6 @@ process.stdin.on('data', async (rawInput: string) => {
     }
   }
 
-  await writeToStream(process.stdout, JSON.stringify({info: `[PID: ${process.pid}] Progress: 100%`}) + '\n');
+  await writeToStream(process.stdout, JSON.stringify({info: 'Progress: 100%'}) + '\n');
   await writeToStream(process.stdout, JSON.stringify({finished: true}));
 });

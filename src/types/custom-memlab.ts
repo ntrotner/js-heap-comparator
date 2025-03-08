@@ -1,6 +1,7 @@
 export type ObjectRecord = {
   n: number;
   size: number;
+  shallowSize: number;
   ids: number[];
   obj: {
     class: string;

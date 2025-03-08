@@ -1,4 +1,5 @@
 import {
+  type BaseComparisonResult,
   type DisjunctTracker,
   type NextBestMatchTracker,
   type PerfectMatchTracker,
@@ -66,3 +67,13 @@ export type BaseDisjunctNodesPresenterOptions = BaseComparisonPresenterOptions &
  * Interface for presenter that reports the disjunct nodes comparison result.
  */
 export type BaseDisjunctNodesPresenter = BaseComparisonPresenter<DisjunctTracker, BaseDisjunctNodesPresenterOptions>;
+
+/**
+ * Options for the statistics presenter.
+ */
+export type BaseStatisticsPresenterOptions = BaseComparisonPresenterOptions & {filePath: string; fileName: string};
+
+/**
+ * Interface for presenter that reports the statistics comparison result.
+ */
+export type BaseStatisticsPresenter = BaseComparisonPresenter<BaseComparisonResult, BaseStatisticsPresenterOptions>;

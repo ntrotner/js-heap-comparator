@@ -1,20 +1,18 @@
-import {
-  type IHeapNode,
-  type IHeapEdge,
-} from '@memlab/core';
-
 /**
  * Result of the comparison between two heaps.
  */
-export type HeapComparisonResult = {
-  nodes: IHeapNode[];
-  edges: IHeapEdge[];
-};
+export type HeapComparisonResult = void;
 
 /**
  * Options for the base heap comparator.
  */
 export type BaseHeapComparatorOptions = {
+  activePresenter: {
+    statistics: boolean;
+    perfectMatch: boolean;
+    nextBestMatch: boolean;
+    disjunctNodes: boolean;
+  };
   presenterFilePath: string;
   nextBestMatchObjectThreshold: number;
   threads: number;
