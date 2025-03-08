@@ -231,9 +231,17 @@ export class ObjectComparator<T extends NodeInput> implements BaseComparator<T, 
       perfectMatchCounter.next += value.nextNodeId.size;
     }
 
+    const nextBestMatchCounter = {current: 0, next: 0};
+    for (const [_, value] of Object.entries(this.results.nextBestMatchNodes)) {
+      for (const [__, nodes] of value.entries()) {
+        nextBestMatchCounter.current += nodes.currentNodeId.size;
+        nextBestMatchCounter.next += nodes.nextNodeId.size;
+      }
+    }
+
     console.log('----------');
-    console.log('Amount of unique objects:', this.results.perfectMatchNodes.size);
     console.log('Perfect matches:', perfectMatchCounter);
+    console.log('Next best nodes:', nextBestMatchCounter);
     console.log('Disjunct nodes:', {current: this.results.disjunctNodes.currentNodeId.size, next: this.results.disjunctNodes.nextNodeId.size});
     console.log('Available nodes:', {current: this.currentValues.length, next: this.nextValues.length});
   }
