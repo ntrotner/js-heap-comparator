@@ -25,7 +25,7 @@ process.stdin.on('data', async (rawInput: string) => {
 
   await writeToStream(process.stdout, JSON.stringify({info: `${currentValues.length} current values and ${nextValues.length} next values received`}) + '\n');
   for (const [index, currentValue] of currentValues.entries()) {
-    if (index % 100 === 0) {
+    if (index % 200 === 0) {
       await writeToStream(process.stdout, JSON.stringify({info: `Progress: ${(index / currentValues.length * 100).toFixed(2)}%`}) + '\n');
     }
 

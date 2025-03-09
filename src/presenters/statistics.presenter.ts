@@ -16,7 +16,7 @@ type HeapSizeOfDisjunctNodes = {currentShallowHeapSize: number; nextShallowHeapS
 type HeapSizeOfNextBestMatch = {sizeByAccuracy: Record<string, {currentShallowHeapSize: number; nextShallowHeapSize: number}>};
 type HeapSizeOfPerfectMatch = {currentShallowHeapSize: number; nextShallowHeapSize: number};
 type TotalHeapSizeDifference = {currentShallowHeapSize: number; nextShallowHeapSize: number; difference: number; percentage: number};
-type TotalNumberOfNodes = {perfectMatches: number; nextBestMatches: number; disjunctCurrentNodes: number; disjunctNextNodes: number};
+type TotalNumberOfNodes = {perfectMatchesCurrentNodes: number; perfectMatchesNextNodes: number; nextBestMatchesCurrentNodes: number; nextBestMatchesNextNodes: number; disjunctCurrentNodes: number; disjunctNextNodes: number};
 
 export class StatisticsPresenter<T extends BaseComparisonNodesInput> implements BaseStatisticsPresenter {
   /**
@@ -105,9 +105,25 @@ export class StatisticsPresenter<T extends BaseComparisonNodesInput> implements 
    * Get the total number of nodes.
    */
   private getTotalNumberOfNodes(): TotalNumberOfNodes {
+    const perfectMatchCounter = {current: 0, next: 0};
+    for (const [_, value] of this.comparisonResults.perfectMatchNodes.entries()) {
+      perfectMatchCounter.current += value.currentNodeId.size;
+      perfectMatchCounter.next += value.nextNodeId.size;
+    }
+
+    const nextBestMatchCounter = {current: 0, next: 0};
+    for (const [_, value] of Object.entries(this.comparisonResults.nextBestMatchNodes)) {
+      for (const [__, nodes] of value.entries()) {
+        nextBestMatchCounter.current += nodes.currentNodeId.size;
+        nextBestMatchCounter.next += nodes.nextNodeId.size;
+      }
+    }
+
     return {
-      perfectMatches: this.comparisonResults.perfectMatchNodes.size,
-      nextBestMatches: Object.values(this.comparisonResults.nextBestMatchNodes).reduce((accumulator, value) => accumulator + value.size, 0),
+      perfectMatchesCurrentNodes: perfectMatchCounter.current,
+      perfectMatchesNextNodes: perfectMatchCounter.next,
+      nextBestMatchesCurrentNodes: nextBestMatchCounter.current,
+      nextBestMatchesNextNodes: nextBestMatchCounter.next,
       disjunctCurrentNodes: this.comparisonResults.disjunctNodes.currentNodeId.size,
       disjunctNextNodes: this.comparisonResults.disjunctNodes.nextNodeId.size,
     };

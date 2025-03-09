@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 import {
   type NextBestMatchTracker,
 } from '../types/index.js';
@@ -37,6 +38,7 @@ export function getDefaultValueOfNextBestMatchTracker(): NextBestMatchTracker {
  *
  * @param input number between 100 and 0
  */
+// eslint-disable-next-line complexity
 export function mapIntervalToNumber(input: number) {
   if (input === 100) {
     return '100';
