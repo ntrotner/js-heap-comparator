@@ -75,27 +75,27 @@ export class ObjectComparator<T extends NodeInput> implements BaseComparator<T, 
    * @inheritdoc
    */
   public async compare(): Promise<BaseComparisonResult> {
-    console.log('Starting perfect match search');
+    console.log('Starting perfect match search for objects');
     let currentValuesLength = this.currentValues.length;
     for (const [i, value] of this.currentValues.entries()) {
       this.findPerfectMatch(value);
 
-      if (i % 1000 === 0) {
+      if (i % 2500 === 0) {
         this.debug();
         console.log(`Progress: ${(i / currentValuesLength * 100).toFixed(2)}%`);
       }
     }
 
     this.debug();
-    console.log('Finished perfect match search');
-    console.log('Starting next best match search');
+    console.log('Finished perfect match search for objects');
+    console.log('Starting next best match search for objects');
     currentValuesLength = this.currentValues.length;
     let bestMatches = [];
     if (this.threads <= 1) {
       for (const [i, value] of this.currentValues.entries()) {
         bestMatches.push(...this.findNextBestMatches(value));
 
-        if (i % 1000 === 0) {
+        if (i % 2500 === 0) {
           this.debug();
           console.log(`Progress: ${(i / currentValuesLength * 100).toFixed(2)}%`);
         }
@@ -105,9 +105,9 @@ export class ObjectComparator<T extends NodeInput> implements BaseComparator<T, 
       bestMatches = await bestMatchesHub.runComparison();
     }
 
-    console.log('Finished aggregation of matches');
+    console.log('Finished aggregation of matches for objects');
     this.selectNextBestMatches(bestMatches);
-    console.log('Finished next best match search');
+    console.log('Finished next best match search for objects');
 
     this.fillDisjunctNodes();
     this.debug();

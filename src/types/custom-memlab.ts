@@ -12,6 +12,13 @@ export type ObjectRecord = {
   };
 };
 
+export type PrimitiveRecord = {
+  n: number;
+  size: number;
+  shallowSize: number;
+  value: string | number | boolean | undefined;
+};
+
 export type ObjectAggregationMap = Record<string, ObjectRecord>;
 export type ObjectMap = Map<number, ObjectRecord>;
 export type IgnoredNodesMap = Map<number, string | number>;

@@ -10,7 +10,8 @@ import {
   CustomNodeType,
   type IgnoredNodesMap,
   type ObjectAggregationMap,
-  type ObjectMap
+  type ObjectMap,
+  type PrimitiveRecord
 } from "../../../types/index.js";
 import hash from 'object-hash';
 import {
@@ -172,6 +173,11 @@ export class ObjectDeepAnalysis extends Memlab.ObjectShallowAnalysis {
   private ignoredNodesMap: IgnoredNodesMap = new Map();
 
   /**
+   * track node to primitive type reference with complete metadata
+   */
+  private ignoredNodesMapComplete: Map<number, PrimitiveRecord> = new Map();
+
+  /**
    * saves object values as keys for aggregation
    */
   private uniqueObjectsMap: ObjectAggregationMap | undefined;
@@ -193,6 +199,13 @@ export class ObjectDeepAnalysis extends Memlab.ObjectShallowAnalysis {
    */
   public getDeepFilledObjects(): ObjectMap | undefined {
     return this.deepFilledObjects;
+  }
+
+  /**
+   * Returns the ignored nodes
+   */
+  public getPrimitiveNodes(): PrimitiveRecord[] {
+    return [...this.ignoredNodesMapComplete.values()];
   }
 
   /**
@@ -305,5 +318,7 @@ export class ObjectDeepAnalysis extends Memlab.ObjectShallowAnalysis {
       console.log('Unknown node type:', node.toJSONString());
       this.ignoredNodesMap.set(node.id, node.toJSONString());
     }
+
+    this.ignoredNodesMapComplete.set(node.id, { n: node.id, size: node.retainedSize, shallowSize: node.self_size, value: this.ignoredNodesMap.get(node.id) });
   }
 }

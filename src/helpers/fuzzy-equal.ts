@@ -6,11 +6,14 @@ import {
  * Calculate the total similarity from the fuzzy equal comparison results.
  */
 function getTotalSimilarity(fuzzyEqualResult: FuzzyEqualComparison[]) {
-  return fuzzyEqualResult.reduce<FuzzyEqualComparison>((accumulator, result) => {
+  const accumulator = {propertyCount: 0, matching: 0};
+
+  for (const result of fuzzyEqualResult) {
     accumulator.matching += result.matching;
     accumulator.propertyCount += result.propertyCount;
-    return accumulator;
-  }, {propertyCount: 0, matching: 0});
+  }
+
+  return accumulator;
 }
 
 /**
@@ -106,6 +109,7 @@ export function fuzzyEqual(lhsInput: any, rhsInput: any): FuzzyEqualComparison {
   const matchResults: FuzzyEqualComparison[] = [];
 
   while (leftRightComparisons.length > 0) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const [lhs, rhs] = leftRightComparisons.shift() ?? [undefined, undefined];
     const lhsType = typeof lhs;
     const rhsType = typeof rhs;

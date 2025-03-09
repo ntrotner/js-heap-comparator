@@ -9,6 +9,7 @@ import {
 } from '../../memlab/heap-analysis/index.js';
 import {
   ObjectComparator,
+  PrimitiveTypeComparator,
 } from '../../comparators/index.js';
 import {
   DisjunctNodesPresenter,
@@ -63,6 +64,14 @@ export class V8Comparator implements BaseHeapComparator {
     const nextHeapNodesMap = nextHeapAnalysis.getDeepFilledObjects() ?? emptyMap;
     const nextHeapNodesDeepFilled = [...nextHeapNodesMap.entries()];
 
+    const primitiveTypeComparator = new PrimitiveTypeComparator();
+    primitiveTypeComparator.initialize(
+      currentHeapAnalysis.getPrimitiveNodes(),
+      nextHeapAnalysis.getPrimitiveNodes(),
+      {},
+    );
+    const primitiveTypeComparatorResults = await primitiveTypeComparator.compare();
+
     const objectComparator = new ObjectComparator();
     objectComparator.initialize(
       currentHeapNodesDeepFilled.map(([nodeId, objectRecord]) => ({nodeId, node: objectRecord})),
@@ -74,27 +83,43 @@ export class V8Comparator implements BaseHeapComparator {
     const fileWriterOptions = {filePath: this.options.presenterFilePath};
 
     if (this.options.activePresenter.perfectMatch) {
-      const perfectMatchPresenter = new PerfectMatchPresenter();
-      perfectMatchPresenter.initialize(currentHeapNodesMap, nextHeapNodesMap, objectComparatorResults.perfectMatchNodes, {...fileWriterOptions, fileName: 'perfect-match.json'});
-      await perfectMatchPresenter.report();
+      const comparisonTypes = [{comparisonType: 'object', results: objectComparatorResults}, {comparisonType: 'primitive-type', results: primitiveTypeComparatorResults}];
+
+      for (const {comparisonType, results} of comparisonTypes) {
+        const perfectMatchPresenter = new PerfectMatchPresenter();
+        perfectMatchPresenter.initialize(currentHeapNodesMap, nextHeapNodesMap, objectComparatorResults.perfectMatchNodes, {...fileWriterOptions, fileName: `perfect-match.${comparisonType}.json`});
+        await perfectMatchPresenter.report();
+      }
     }
 
     if (this.options.activePresenter.nextBestMatch) {
-      const nextBestMatchPresenter = new NextBestMatchPresenter();
-      nextBestMatchPresenter.initialize(currentHeapNodesMap, nextHeapNodesMap, objectComparatorResults.nextBestMatchNodes, {...fileWriterOptions, fileName: 'next-best-match.json'});
-      await nextBestMatchPresenter.report();
+      const comparisonTypes = [{comparisonType: 'object', results: objectComparatorResults}];
+
+      for (const {comparisonType, results} of comparisonTypes) {
+        const nextBestMatchPresenter = new NextBestMatchPresenter();
+        nextBestMatchPresenter.initialize(currentHeapNodesMap, nextHeapNodesMap, results.nextBestMatchNodes, {...fileWriterOptions, fileName: `next-best-match.${comparisonType}.json`});
+        await nextBestMatchPresenter.report();
+      }
     }
 
     if (this.options.activePresenter.disjunctNodes) {
-      const disjunctNodesPresenter = new DisjunctNodesPresenter();
-      disjunctNodesPresenter.initialize(currentHeapNodesMap, nextHeapNodesMap, objectComparatorResults.disjunctNodes, {...fileWriterOptions, fileName: 'disjunct-nodes.json'});
-      await disjunctNodesPresenter.report();
+      const comparisonTypes = [{comparisonType: 'object', results: objectComparatorResults}, {comparisonType: 'primitive-type', results: primitiveTypeComparatorResults}];
+
+      for (const {comparisonType, results} of comparisonTypes) {
+        const disjunctNodesPresenter = new DisjunctNodesPresenter();
+        disjunctNodesPresenter.initialize(currentHeapNodesMap, nextHeapNodesMap, results.disjunctNodes, {...fileWriterOptions, fileName: `disjunct-nodes.${comparisonType}.json`});
+        await disjunctNodesPresenter.report();
+      }
     }
 
     if (this.options.activePresenter.statistics) {
-      const statisticsPresenter = new StatisticsPresenter();
-      statisticsPresenter.initialize(currentHeapNodesMap, nextHeapNodesMap, objectComparatorResults, {...fileWriterOptions, fileName: 'statistics.json'});
-      await statisticsPresenter.report();
+      const comparisonTypes = [{comparisonType: 'object', results: objectComparatorResults}, {comparisonType: 'primitive-type', results: primitiveTypeComparatorResults}];
+
+      for (const {comparisonType, results} of comparisonTypes) {
+        const statisticsPresenter = new StatisticsPresenter();
+        statisticsPresenter.initialize(currentHeapNodesMap, nextHeapNodesMap, results, {...fileWriterOptions, fileName: `statistics.${comparisonType}.json`});
+        await statisticsPresenter.report();
+      }
     }
   }
 }
