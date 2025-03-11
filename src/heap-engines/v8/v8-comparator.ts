@@ -57,17 +57,19 @@ export class V8Comparator implements BaseHeapComparator {
     const currentHeapAnalysis = new ObjectDeepAnalysis();
     await currentHeapAnalysis.analyzeSnapshotFromFile(currentHeapPath);
     const currentHeapNodesMap = currentHeapAnalysis.getDeepFilledObjects() ?? emptyMap;
+    const currentHeapNodesPrimitiveType = currentHeapAnalysis.getPrimitiveNodes();
     const currentHeapNodesDeepFilled = [...currentHeapNodesMap.entries()];
 
     const nextHeapAnalysis = new ObjectDeepAnalysis();
     await nextHeapAnalysis.analyzeSnapshotFromFile(nextHeapPath);
     const nextHeapNodesMap = nextHeapAnalysis.getDeepFilledObjects() ?? emptyMap;
+    const nextHeapNodesPrimitiveType = nextHeapAnalysis.getPrimitiveNodes();
     const nextHeapNodesDeepFilled = [...nextHeapNodesMap.entries()];
 
     const primitiveTypeComparator = new PrimitiveTypeComparator();
     primitiveTypeComparator.initialize(
-      currentHeapAnalysis.getPrimitiveNodes(),
-      nextHeapAnalysis.getPrimitiveNodes(),
+      currentHeapNodesPrimitiveType,
+      nextHeapNodesPrimitiveType,
       {},
     );
     const primitiveTypeComparatorResults = await primitiveTypeComparator.compare();
@@ -81,13 +83,19 @@ export class V8Comparator implements BaseHeapComparator {
     const objectComparatorResults = await objectComparator.compare();
 
     const fileWriterOptions = {filePath: this.options.presenterFilePath};
+    const allCurrentHeapNodes = new Map([...currentHeapNodesMap.values(), ...currentHeapNodesPrimitiveType]
+      .map(node => ([node.n, {ids: [], obj: {class: 'None', object: {}}, ...node}])),
+    );
+    const allNextHeapNodes = new Map([...nextHeapNodesMap.values(), ...nextHeapNodesPrimitiveType]
+      .map(node => ([node.n, {ids: [], obj: {class: 'None', object: {}}, ...node}])),
+    );
 
     if (this.options.activePresenter.perfectMatch) {
       const comparisonTypes = [{comparisonType: 'object', results: objectComparatorResults}, {comparisonType: 'primitive-type', results: primitiveTypeComparatorResults}];
 
       for (const {comparisonType, results} of comparisonTypes) {
         const perfectMatchPresenter = new PerfectMatchPresenter();
-        perfectMatchPresenter.initialize(currentHeapNodesMap, nextHeapNodesMap, objectComparatorResults.perfectMatchNodes, {...fileWriterOptions, fileName: `perfect-match.${comparisonType}.json`});
+        perfectMatchPresenter.initialize(allCurrentHeapNodes, allNextHeapNodes, objectComparatorResults.perfectMatchNodes, {...fileWriterOptions, fileName: `perfect-match.${comparisonType}.json`});
         await perfectMatchPresenter.report();
       }
     }
@@ -97,7 +105,7 @@ export class V8Comparator implements BaseHeapComparator {
 
       for (const {comparisonType, results} of comparisonTypes) {
         const nextBestMatchPresenter = new NextBestMatchPresenter();
-        nextBestMatchPresenter.initialize(currentHeapNodesMap, nextHeapNodesMap, results.nextBestMatchNodes, {...fileWriterOptions, fileName: `next-best-match.${comparisonType}.json`});
+        nextBestMatchPresenter.initialize(allCurrentHeapNodes, allNextHeapNodes, results.nextBestMatchNodes, {...fileWriterOptions, fileName: `next-best-match.${comparisonType}.json`});
         await nextBestMatchPresenter.report();
       }
     }
@@ -107,7 +115,7 @@ export class V8Comparator implements BaseHeapComparator {
 
       for (const {comparisonType, results} of comparisonTypes) {
         const disjunctNodesPresenter = new DisjunctNodesPresenter();
-        disjunctNodesPresenter.initialize(currentHeapNodesMap, nextHeapNodesMap, results.disjunctNodes, {...fileWriterOptions, fileName: `disjunct-nodes.${comparisonType}.json`});
+        disjunctNodesPresenter.initialize(allCurrentHeapNodes, allNextHeapNodes, results.disjunctNodes, {...fileWriterOptions, fileName: `disjunct-nodes.${comparisonType}.json`});
         await disjunctNodesPresenter.report();
       }
     }
@@ -117,7 +125,7 @@ export class V8Comparator implements BaseHeapComparator {
 
       for (const {comparisonType, results} of comparisonTypes) {
         const statisticsPresenter = new StatisticsPresenter();
-        statisticsPresenter.initialize(currentHeapNodesMap, nextHeapNodesMap, results, {...fileWriterOptions, fileName: `statistics.${comparisonType}.json`});
+        statisticsPresenter.initialize(allCurrentHeapNodes, allNextHeapNodes, results, {...fileWriterOptions, fileName: `statistics.${comparisonType}.json`});
         await statisticsPresenter.report();
       }
     }
