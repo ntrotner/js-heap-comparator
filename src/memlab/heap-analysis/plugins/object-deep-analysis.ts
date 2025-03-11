@@ -50,10 +50,16 @@ export class ObjectDeepAnalysis extends Memlab.ObjectShallowAnalysis {
     });
 
     // START CUSTOM: do not ignore arrays
-    if (node.type === 'array') {
+    if (node.type === 'array' || (node.name === 'Array' && node.type === 'object')) {
       return false;
     }
     // END CUSTOM: do not ignore arrays
+
+    // START CUSTOM: do not ignore objects
+    if ((node.name === 'Object' && node.type === 'object')) {
+      return false;
+    }
+    // END CUSTOM: do not ignore objects
 
     return !(
       !hasAHiddenReferrer &&
@@ -273,11 +279,7 @@ export class ObjectDeepAnalysis extends Memlab.ObjectShallowAnalysis {
     } else if (node.type === 'number') {
       this.ignoredNodesMap.set(node.id, MemlabCore.utils.getNumberNodeValue(node) || 0);
     } else if (node.type === 'object') {
-      if (node.name === 'Object') {
-        this.ignoredNodesMap.set(node.id, CustomNodeType.ObjectConstructor);
-      } else {
-        this.ignoredNodesMap.set(node.id, node.name);
-      }
+      this.ignoredNodesMap.set(node.id, node.name);
     } else if (
       (node.name === '(concatenated string)' && node.type === 'concatenated string') ||
       (node.name === '(sliced string)' && node.type === 'sliced string')
@@ -303,17 +305,6 @@ export class ObjectDeepAnalysis extends Memlab.ObjectShallowAnalysis {
       this.ignoredNodesMap.set(node.id, node.name);
     } else if (node.type === 'symbol') {
       this.ignoredNodesMap.set(node.id, node.name);
-    } else if (node.type === 'sliced string') {
-      const slicedString = node.references
-        .filter(({type}) => type !== 'hidden')
-        .map(({toNode}) => {
-          if (toNode.type === 'string') {
-            return toNode.name;
-          }
-          return '';
-        })
-        .join('');
-      this.ignoredNodesMap.set(node.id, slicedString);
     } else {
       console.log('Unknown node type:', node.toJSONString());
       this.ignoredNodesMap.set(node.id, node.toJSONString());
