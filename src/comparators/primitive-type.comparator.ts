@@ -17,9 +17,19 @@ export class PrimitiveTypeComparator<T extends PrimitiveRecord> implements BaseC
   private currentValues: T[] = [];
 
   /**
+   * Stores the current nodes that have been used in a perfect match.
+   */
+  private readonly usedCurrentValueNodeIds = new Set<number>();
+
+  /**
    * Stores the next nodes to compare.
    */
   private nextValues: T[] = [];
+
+  /**
+   * Stores the next nodes that have been used in a perfect match.
+   */
+  private readonly usedNextValueNodeIds = new Set<number>();
 
   /**
    * Stores the comparison results.
@@ -55,6 +65,7 @@ export class PrimitiveTypeComparator<T extends PrimitiveRecord> implements BaseC
 
     console.log('Finished perfect match search for primitive types');
     this.fillDisjunctNodes();
+    console.log('Finished matching for primitive types');
 
     return this.results;
   }
@@ -66,7 +77,9 @@ export class PrimitiveTypeComparator<T extends PrimitiveRecord> implements BaseC
    * @returns indicator whether perfect match was found
    */
   private findPerfectMatch(currentValue: T): boolean {
-    const perfectMatch = this.nextValues.find(nextValue => currentValue.value === nextValue.value);
+    const perfectMatch = this.nextValues.find(nextValue =>
+      !this.usedNextValueNodeIds.has(nextValue.n) && currentValue.value === nextValue.value,
+    );
 
     if (perfectMatch) {
       const valueHash = currentValue.value?.toString() ?? 'undefined';
@@ -78,8 +91,8 @@ export class PrimitiveTypeComparator<T extends PrimitiveRecord> implements BaseC
       aggregatorReference.currentNodeId.add(currentValue.n);
       aggregatorReference.nextNodeId.add(perfectMatch.n);
       this.results.perfectMatchNodes.set(valueHash, aggregatorReference);
-      this.currentValues = this.currentValues.filter(_currentValue => _currentValue.n !== currentValue.n);
-      this.nextValues = this.nextValues.filter(nextValue => nextValue.n !== perfectMatch.n);
+      this.usedCurrentValueNodeIds.add(currentValue.n);
+      this.usedNextValueNodeIds.add(perfectMatch.n);
 
       return true;
     }
@@ -92,10 +105,18 @@ export class PrimitiveTypeComparator<T extends PrimitiveRecord> implements BaseC
    */
   private fillDisjunctNodes(): void {
     for (const currentValue of this.currentValues) {
+      if (this.usedCurrentValueNodeIds.has(currentValue.n)) {
+        continue;
+      }
+
       this.results.disjunctNodes.currentNodeId.add(currentValue.n);
     }
 
     for (const nextValue of this.nextValues) {
+      if (this.usedNextValueNodeIds.has(nextValue.n)) {
+        continue;
+      }
+
       this.results.disjunctNodes.nextNodeId.add(nextValue.n);
     }
 
@@ -116,6 +137,6 @@ export class PrimitiveTypeComparator<T extends PrimitiveRecord> implements BaseC
     console.log('----------');
     console.log('Perfect matches:', perfectMatchCounter);
     console.log('Disjunct nodes:', {current: this.results.disjunctNodes.currentNodeId.size, next: this.results.disjunctNodes.nextNodeId.size});
-    console.log('Available nodes:', {current: this.currentValues.length, next: this.nextValues.length});
+    console.log('Available nodes:', {current: this.currentValues.length - this.usedCurrentValueNodeIds.size, next: this.nextValues.length - this.usedNextValueNodeIds.size});
   }
 }
