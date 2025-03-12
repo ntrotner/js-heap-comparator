@@ -67,7 +67,7 @@ export class StatisticsPresenter<T extends BaseComparisonNodesInput> implements 
     const heapSizeOfNextBestMatch = this.getHeapSizeOfNextBestMatch();
     const heapSizeOfDisjunctNodes = this.getHeapSizeOfDisjunctNodes();
     const totalNumberOfNodes = this.getTotalNumberOfNodes();
-    const totalSizeDifference = this.calculateTotalHeapSizeDifference(heapSizeOfNextBestMatch, heapSizeOfDisjunctNodes);
+    const totalSizeDifference = this.calculateTotalHeapSizeDifference(heapSizeOfPerfectMatch, heapSizeOfNextBestMatch, heapSizeOfDisjunctNodes);
 
     const pathToWrite = path.join(this.options.filePath, this.options.fileName);
     const dataToWrite = JSON.stringify({
@@ -83,16 +83,17 @@ export class StatisticsPresenter<T extends BaseComparisonNodesInput> implements 
   /**
    * Calculate the total heap size difference.
    *
+   * @param heapSizeOfPerfectMatch
    * @param heapSizeOfNextBestMatch
    * @param heapSizeOfDisjunctNodes
    * @private
    */
-  private calculateTotalHeapSizeDifference(heapSizeOfNextBestMatch: HeapSizeOfNextBestMatch, heapSizeOfDisjunctNodes: HeapSizeOfDisjunctNodes): TotalHeapSizeDifference {
+  private calculateTotalHeapSizeDifference(heapSizeOfPerfectMatch: HeapSizeOfPerfectMatch, heapSizeOfNextBestMatch: HeapSizeOfNextBestMatch, heapSizeOfDisjunctNodes: HeapSizeOfDisjunctNodes): TotalHeapSizeDifference {
     const {sizeByAccuracy} = heapSizeOfNextBestMatch;
     const {currentShallowHeapSize: currentDisjunctNodesShallowHeapSize, nextShallowHeapSize: nextDisjunctNodesShallowHeapSize} = heapSizeOfDisjunctNodes;
 
-    const currentShallowHeapSize = Object.values(sizeByAccuracy).reduce((accumulator, value) => accumulator + value.currentShallowHeapSize, 0) + currentDisjunctNodesShallowHeapSize;
-    const nextShallowHeapSize = Object.values(sizeByAccuracy).reduce((accumulator, value) => accumulator + value.nextShallowHeapSize, 0) + nextDisjunctNodesShallowHeapSize;
+    const currentShallowHeapSize = Object.values(sizeByAccuracy).reduce((accumulator, value) => accumulator + value.currentShallowHeapSize, 0) + currentDisjunctNodesShallowHeapSize + heapSizeOfPerfectMatch.currentShallowHeapSize;
+    const nextShallowHeapSize = Object.values(sizeByAccuracy).reduce((accumulator, value) => accumulator + value.nextShallowHeapSize, 0) + nextDisjunctNodesShallowHeapSize + heapSizeOfPerfectMatch.nextShallowHeapSize;
     const difference = nextShallowHeapSize - currentShallowHeapSize;
     const percentage = (nextShallowHeapSize - currentShallowHeapSize) / nextShallowHeapSize * 100;
 
