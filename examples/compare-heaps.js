@@ -10,7 +10,8 @@ comparator.initialize({
   },
   presenterFilePath: '/presenterOutput',
   nextBestMatchObjectThreshold: 0.7,
-  threads: 3
+  nextBestMatchObjectPropertyThreshold: 10000,
+  threads: 1
 });
 
 comparator.compare('base.json', 'next.json');

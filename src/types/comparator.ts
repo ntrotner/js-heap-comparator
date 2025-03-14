@@ -80,7 +80,7 @@ export type BaseComparator<T, O extends BaseComparisonResult, P extends Record<s
    * @param nextValues
    * @param options
    */
-  initialize(currentValues: T[], nextValues: T[], options: P): void;
+  initialize(currentValues: T, nextValues: T, options: P): void;
 
   /**
    * Compare specific nodes and find matches

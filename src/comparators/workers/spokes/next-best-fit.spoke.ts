@@ -12,39 +12,81 @@ import {
   type NextBestFitRequest,
 } from '../types/next-best-fit.js';
 
-const currentValues: NodeInput[] = [];
-const nextValues: NodeInput[] = [];
+class NextBestFitSpoke {
+  /**
+   * Stores the current nodes to compare.
+   */
+  private currentValues: NodeInput[] = [];
 
-process.stdin.on('data', async (rawInput: string) => {
-  const input = JSON.parse(rawInput.toString()) as NextBestFitRequest;
-  currentValues.push(...input.currentValues);
-  nextValues.push(...input.nextValues);
-  if (input.currentValues.length > 0 || input.nextValues.length > 0) {
-    return;
-  }
+  /**
+   * Stores the next nodes to compare.
+   */
+  private nextValues: NodeInput[] = [];
 
-  await writeToStream(process.stdout, JSON.stringify({info: `${currentValues.length} current values and ${nextValues.length} next values received`}) + '\n');
-  for (const [index, currentValue] of currentValues.entries()) {
-    if (index % 200 === 0) {
-      await writeToStream(process.stdout, JSON.stringify({info: `Progress: ${(index / currentValues.length * 100).toFixed(2)}%`}) + '\n');
-    }
+  /**
+   * Threshold for next best match.
+   */
+  private threshold = 0.7;
 
-    for (const nextValue of nextValues) {
-      let result: FuzzyEqualSimilarity;
+  /**
+   * Threshold for next best match property.
+   */
+  private propertyThreshold = Infinity;
 
-      try {
-        const totalSimilarity: FuzzyEqualComparison = fuzzyEqual(currentValue.node.obj, nextValue.node.obj);
-        result = totalSimilarity.propertyCount === 0 ? {similarity: 0, currentValueNodeId: currentValue.nodeId, nextValueNodeId: nextValue.nodeId} : {similarity: totalSimilarity.matching / totalSimilarity.propertyCount, currentValueNodeId: currentValue.nodeId, nextValueNodeId: nextValue.nodeId};
-      } catch {
-        result = {similarity: 0, currentValueNodeId: currentValue.nodeId, nextValueNodeId: nextValue.nodeId};
+  constructor() {
+    process.stdin.on('data', async (rawInput: string) => {
+      const input = JSON.parse(rawInput.toString()) as NextBestFitRequest;
+      this.currentValues.push(...input.currentValues);
+      this.nextValues.push(...input.nextValues);
+
+      // Stream not done
+      if (input.currentValues.length > 0 || input.nextValues.length > 0) {
+        return;
       }
 
-      if (result.similarity >= input.threshold) {
-        await writeToStream(process.stdout, JSON.stringify(result));
-      }
-    }
+      this.threshold = input.threshold;
+      this.propertyThreshold = input.propertyThreshold;
+
+      await writeToStream(process.stdout, JSON.stringify({info: `${this.currentValues.length} current values and ${this.nextValues.length} next values received`}) + '\n');
+      await this.runComparison();
+    });
   }
 
-  await writeToStream(process.stdout, JSON.stringify({info: 'Progress: 100%'}) + '\n');
-  await writeToStream(process.stdout, JSON.stringify({finished: true}));
-});
+  /**
+   * Run the comparison between the current and next values.
+   */
+  private async runComparison() {
+    const currentValuesLength = this.currentValues.length;
+    const loggingInterval = Math.max(1, Math.floor(currentValuesLength / 100));
+
+    for (const [index, currentValue] of this.currentValues.entries()) {
+      if (index % loggingInterval === 0) {
+        await writeToStream(process.stdout, JSON.stringify({info: `Progress: ${(index / currentValuesLength * 100).toFixed(2)}%`}));
+      }
+
+      for (const nextValue of this.nextValues) {
+        try {
+          const totalSimilarity: FuzzyEqualComparison = fuzzyEqual(currentValue.node.obj, nextValue.node.obj, this.propertyThreshold);
+
+          if (totalSimilarity.propertyCount === 0) {
+            continue;
+          }
+
+          const similarity = totalSimilarity.matching / totalSimilarity.propertyCount;
+          if (similarity < this.threshold) {
+            continue;
+          }
+
+          await writeToStream(process.stdout, JSON.stringify({similarity: totalSimilarity.matching / totalSimilarity.propertyCount, currentValueNodeId: currentValue.nodeId, nextValueNodeId: nextValue.nodeId}));
+        } catch {}
+      }
+    }
+
+    await writeToStream(process.stdout, JSON.stringify({info: 'Progress: 100%'}));
+    await writeToStream(process.stdout, JSON.stringify({finished: true}));
+    this.currentValues = [];
+    this.nextValues = [];
+  }
+}
+
+const _spoke = new NextBestFitSpoke();
