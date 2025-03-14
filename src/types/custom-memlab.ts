@@ -21,6 +21,7 @@ export type PrimitiveRecord = {
 
 export type ObjectAggregationMap = Record<string, ObjectRecord>;
 export type ObjectMap = Map<number, ObjectRecord>;
+export type PrimitiveTypeMap = Map<number, PrimitiveRecord>;
 export type IgnoredNodesMap = Map<number, string | number>;
 
 export enum CustomNodeType {

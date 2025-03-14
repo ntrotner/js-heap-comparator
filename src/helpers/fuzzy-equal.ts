@@ -56,9 +56,7 @@ function compareArrays(lhs: any[], rhs: any[]): [FuzzyEqualComparison[], Array<[
   for (let i = 0; i < length; i++) {
     if (i in lhs && i in rhs) {
       leftRightComparison.push([lhs[i], rhs[i]]);
-    } else if (i in lhs && !(i in rhs)) {
-      matchResult.push({propertyCount: 1, matching: 0});
-    } else if (!(i in lhs) && i in rhs) {
+    } else {
       matchResult.push({propertyCount: 1, matching: 0});
     }
   }
@@ -103,12 +101,13 @@ function compareObjects(lhs: any, rhs: any): [FuzzyEqualComparison[], Array<[any
  *
  * @param lhsInput
  * @param rhsInput
+ * @param propertyThreshold
  */
-export function fuzzyEqual(lhsInput: any, rhsInput: any): FuzzyEqualComparison {
+export function fuzzyEqual(lhsInput: any, rhsInput: any, propertyThreshold = Infinity): FuzzyEqualComparison {
   const leftRightComparisons: Array<[any, any]> = [[lhsInput, rhsInput]];
-  const matchResults: FuzzyEqualComparison[] = [];
+  let matchResults: FuzzyEqualComparison = {propertyCount: 0, matching: 0};
 
-  while (leftRightComparisons.length > 0) {
+  while (leftRightComparisons.length > 0 && matchResults.propertyCount < propertyThreshold) {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const [lhs, rhs] = leftRightComparisons.shift() ?? [undefined, undefined];
     const lhsType = typeof lhs;
@@ -123,27 +122,27 @@ export function fuzzyEqual(lhsInput: any, rhsInput: any): FuzzyEqualComparison {
 
     if (lhsType === rhsType && bothNotObjects) {
       const [matchResult, _] = compareLiterals(lhs, rhs);
-      matchResults.push(matchResult);
+      matchResults = getTotalSimilarity([matchResults, matchResult]);
     } else if (lhsType === rhsType) {
       if (lhsIsNull) {
         const [matchResult, _] = compareLiterals(lhs, rhs);
-        matchResults.push(matchResult);
+        matchResults = getTotalSimilarity([matchResults, matchResult]);
       } else if (lhsIsArray && rhsIsArray) {
         const [matchResult, leftRightComparison] = compareArrays(lhs, rhs);
         leftRightComparisons.push(...leftRightComparison);
-        matchResults.push(...matchResult);
+        matchResults = getTotalSimilarity([matchResults, ...matchResult]);
       } else if (lhsIsObject && rhsIsObject) {
         const [matchResult, leftRightComparison] = compareObjects(lhs, rhs);
         leftRightComparisons.push(...leftRightComparison);
-        matchResults.push(...matchResult);
+        matchResults = getTotalSimilarity([matchResults, ...matchResult]);
       }
-    } else if (lhsIsNull && rhsIsNull) {
+    } else if (lhsIsNull || rhsIsNull) {
       const [matchResult, _] = compareLiterals(lhs, rhs);
-      matchResults.push(matchResult);
+      matchResults = getTotalSimilarity([matchResults, matchResult]);
     } else {
-      matchResults.push({propertyCount: 1, matching: 0});
+      matchResults = getTotalSimilarity([matchResults, {propertyCount: 1, matching: 0}]);
     }
   }
 
-  return getTotalSimilarity(matchResults);
+  return matchResults;
 }

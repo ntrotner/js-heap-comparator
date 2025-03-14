@@ -15,6 +15,7 @@ export type BaseHeapComparatorOptions = {
   };
   presenterFilePath: string;
   nextBestMatchObjectThreshold: number;
+  nextBestMatchObjectPropertyThreshold: number;
   threads: number;
 };
 

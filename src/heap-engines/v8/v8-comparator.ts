@@ -2,7 +2,6 @@ import {
   type BaseHeapComparator,
   type BaseHeapComparatorOptions,
   type HeapComparisonResult,
-  type ObjectMap,
 } from '../../types/index.js';
 import {
   ObjectDeepAnalysis,
@@ -17,6 +16,9 @@ import {
   NextBestMatchPresenter,
   StatisticsPresenter,
 } from '../../presenters/index.js';
+import {
+  Logger,
+} from '../../helpers/index.js';
 
 export class V8Comparator implements BaseHeapComparator {
   /**
@@ -31,6 +33,7 @@ export class V8Comparator implements BaseHeapComparator {
     },
     presenterFilePath: './',
     nextBestMatchObjectThreshold: 0.7,
+    nextBestMatchObjectPropertyThreshold: 10_000,
     threads: 1,
   };
 
@@ -42,7 +45,7 @@ export class V8Comparator implements BaseHeapComparator {
       ...this.options,
       ...options,
     };
-    console.log('V8Comparator initialized with options: ' + JSON.stringify(this.options));
+    Logger.info('V8Comparator initialized with options: ' + JSON.stringify(this.options));
   }
 
   /**
@@ -52,18 +55,18 @@ export class V8Comparator implements BaseHeapComparator {
    * @param nextHeapPath
    */
   async compare(currentHeapPath: string, nextHeapPath: string): Promise<HeapComparisonResult> {
-    const emptyMap: ObjectMap = new Map();
+    const emptyMap = new Map<never, never>();
 
     const currentHeapAnalysis = new ObjectDeepAnalysis();
     await currentHeapAnalysis.analyzeSnapshotFromFile(currentHeapPath);
     const currentHeapNodesMap = currentHeapAnalysis.getDeepFilledObjects() ?? emptyMap;
-    const currentHeapNodesPrimitiveType = currentHeapAnalysis.getPrimitiveNodes();
+    const currentHeapNodesPrimitiveType = currentHeapAnalysis.getPrimitiveNodes() ?? emptyMap;
     const currentHeapNodesDeepFilled = [...currentHeapNodesMap.entries()];
 
     const nextHeapAnalysis = new ObjectDeepAnalysis();
     await nextHeapAnalysis.analyzeSnapshotFromFile(nextHeapPath);
     const nextHeapNodesMap = nextHeapAnalysis.getDeepFilledObjects() ?? emptyMap;
-    const nextHeapNodesPrimitiveType = nextHeapAnalysis.getPrimitiveNodes();
+    const nextHeapNodesPrimitiveType = nextHeapAnalysis.getPrimitiveNodes() ?? emptyMap;
     const nextHeapNodesDeepFilled = [...nextHeapNodesMap.entries()];
 
     const primitiveTypeComparator = new PrimitiveTypeComparator();
@@ -76,17 +79,21 @@ export class V8Comparator implements BaseHeapComparator {
 
     const objectComparator = new ObjectComparator();
     objectComparator.initialize(
-      currentHeapNodesDeepFilled.map(([nodeId, objectRecord]) => ({nodeId, node: objectRecord})),
-      nextHeapNodesDeepFilled.map(([nodeId, objectRecord]) => ({nodeId, node: objectRecord})),
-      {nextBestMatchThreshold: this.options.nextBestMatchObjectThreshold, threads: this.options.threads},
+      new Map(currentHeapNodesDeepFilled.map(([nodeId, objectRecord]) => ([nodeId, {nodeId, node: objectRecord}]))),
+      new Map(nextHeapNodesDeepFilled.map(([nodeId, objectRecord]) => ([nodeId, {nodeId, node: objectRecord}]))),
+      {
+        nextBestMatchThreshold: this.options.nextBestMatchObjectThreshold,
+        nextBestMatchPropertyThreshold: this.options.nextBestMatchObjectPropertyThreshold,
+        threads: this.options.threads,
+      },
     );
     const objectComparatorResults = await objectComparator.compare();
 
     const fileWriterOptions = {filePath: this.options.presenterFilePath};
-    const allCurrentHeapNodes = new Map([...currentHeapNodesMap.values(), ...currentHeapNodesPrimitiveType]
+    const allCurrentHeapNodes = new Map([...currentHeapNodesMap.values(), ...currentHeapNodesPrimitiveType.values()]
       .map(node => ([node.n, {ids: [], obj: {class: 'None', object: {}}, ...node}])),
     );
-    const allNextHeapNodes = new Map([...nextHeapNodesMap.values(), ...nextHeapNodesPrimitiveType]
+    const allNextHeapNodes = new Map([...nextHeapNodesMap.values(), ...nextHeapNodesPrimitiveType.values()]
       .map(node => ([node.n, {ids: [], obj: {class: 'None', object: {}}, ...node}])),
     );
 

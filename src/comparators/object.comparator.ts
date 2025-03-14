@@ -9,7 +9,6 @@ import {
   type BaseComparisonResult,
   type FuzzyEqualComparison,
   type FuzzyEqualSimilarity,
-  type NextBestMatchTracker,
   type NodeInput,
   type PerfectMatchTracker,
 } from '../types/index.js';
@@ -18,6 +17,7 @@ import {
   fuzzyEqual,
   mapIntervalToNumber,
   getDefaultValueOfNextBestMatchTracker,
+  Logger,
 } from '../helpers/index.js';
 import {
   NextBestFitHub,
@@ -25,29 +25,20 @@ import {
 
 type Options = {
   nextBestMatchThreshold: number;
+  nextBestMatchPropertyThreshold: number;
   threads: number;
 };
 
-export class ObjectComparator<T extends NodeInput> implements BaseComparator<T, BaseComparisonResult, Options> {
+export class ObjectComparator<T extends Map<number, NodeInput>> implements BaseComparator<T, BaseComparisonResult, Options> {
   /**
    * Stores the current nodes to compare.
    */
-  private currentValues: T[] = [];
-
-  /**
-   * Stores the current nodes that have been used in a perfect match.
-   */
-  private readonly usedCurrentValueNodeIds = new Set<number>();
+  private currentValues = new Map() as T;
 
   /**
    * Stores the next nodes to compare.
    */
-  private nextValues: T[] = [];
-
-  /**
-   * Stores the next nodes that have been used in a perfect match.
-   */
-  private readonly usedNextValueNodeIds = new Set<number>();
+  private nextValues = new Map() as T;
 
   /**
    * Threshold for next best match.
@@ -58,6 +49,11 @@ export class ObjectComparator<T extends NodeInput> implements BaseComparator<T, 
    * Amount of threads for parallel next best check.
    */
   private threads = 1;
+
+  /**
+   * Threshold for next best match property.
+   */
+  private nextBestMatchPropertyThreshold = Infinity;
 
   /**
    * Stores the comparison results.
@@ -74,56 +70,79 @@ export class ObjectComparator<T extends NodeInput> implements BaseComparator<T, 
   /**
    * @inheritdoc
    */
-  public initialize(currentValues: T[], nextValues: T[], options: Options): void {
+  public initialize(currentValues: T, nextValues: T, options: Options): void {
     this.currentValues = currentValues;
     this.nextValues = nextValues;
     this.threshold = options.nextBestMatchThreshold;
     this.threads = options.threads;
+    this.nextBestMatchPropertyThreshold = options.nextBestMatchPropertyThreshold;
   }
 
   /**
    * @inheritdoc
    */
   public async compare(): Promise<BaseComparisonResult> {
-    console.log('Starting perfect match search for objects');
-    let currentValuesLength = this.currentValues.length;
-    for (const [i, value] of this.currentValues.entries()) {
-      this.findPerfectMatch(value);
+    this.orchestratePerfectMatchSearch();
+    await this.orchestrateNextBestMatchSearch();
 
-      if (i % 2500 === 0) {
+    this.fillDisjunctNodes();
+    Logger.info('Finished search for objects');
+    this.debug();
+    return this.results;
+  }
+
+  /**
+   * Orchestrate the perfect match search for objects.
+   */
+  private orchestratePerfectMatchSearch(): void {
+    const currentValuesList = [...this.currentValues.values()];
+    const currentValuesLength = this.currentValues.size;
+    const loggingInterval = Math.max(1, Math.floor(currentValuesLength / 100));
+    let iteration = 0;
+    Logger.info('Starting perfect match search for objects with size: ' + currentValuesLength);
+
+    for (const value of currentValuesList) {
+      this.findPerfectMatch(value);
+      iteration += 1;
+
+      if (iteration % loggingInterval === 0) {
         this.debug();
-        console.log(`Progress: ${(i / currentValuesLength * 100).toFixed(2)}%`);
+        Logger.info(`Progress: ${(iteration / currentValuesLength * 100).toFixed(2)}%`);
       }
     }
 
-    this.debug();
-    console.log('Finished perfect match search for objects');
-    console.log('Starting next best match search for objects');
-    currentValuesLength = this.currentValues.length;
-    let bestMatches = [];
-    const filteredCurrentValues = this.currentValues.filter(value => !this.usedCurrentValueNodeIds.has(value.nodeId));
-    const filteredNextValues = this.nextValues.filter(value => !this.usedNextValueNodeIds.has(value.nodeId));
-    if (this.threads <= 1) {
-      for (const [i, value] of filteredCurrentValues.entries()) {
-        bestMatches.push(...this.findNextBestMatches(value, filteredNextValues));
+    Logger.info('Finished perfect match search for objects');
+  }
 
-        if (i % 2500 === 0) {
+  /**
+   * Orchestrate the next best match search for objects.
+   */
+  private async orchestrateNextBestMatchSearch(): Promise<void> {
+    const currentValuesList = [...this.currentValues.values()].sort((a, b) => a.nodeId - b.nodeId);
+    const nextValuesList = [...this.nextValues.values()].sort((a, b) => a.nodeId - b.nodeId);
+    const currentValuesLength = this.currentValues.size;
+    const loggingInterval = Math.max(1, Math.floor(currentValuesLength / 100));
+    let iteration = 0;
+    let bestMatches = [];
+    Logger.info('Starting next best match search for objects with size: ' + currentValuesLength);
+
+    if (this.threads <= 1) {
+      for (const value of currentValuesList) {
+        bestMatches.push(...this.findNextBestMatches(value, nextValuesList));
+        iteration += 1;
+
+        if (iteration % loggingInterval === 0) {
           this.debug();
-          console.log(`Progress: ${(i / currentValuesLength * 100).toFixed(2)}%`);
+          Logger.info(`Progress: ${(iteration / currentValuesLength * 100).toFixed(2)}%`);
         }
       }
     } else {
-      const bestMatchesHub = new NextBestFitHub(filteredCurrentValues, filteredNextValues, {threads: this.threads, threshold: this.threshold});
+      const bestMatchesHub = new NextBestFitHub(currentValuesList, nextValuesList, {threads: this.threads, threshold: this.threshold, propertyThreshold: this.nextBestMatchPropertyThreshold});
       bestMatches = await bestMatchesHub.runComparison();
     }
 
-    console.log('Finished aggregation of matches for objects');
+    Logger.info('Finished next best match search for objects');
     this.selectNextBestMatches(bestMatches);
-    console.log('Finished next best match search for objects');
-
-    this.fillDisjunctNodes();
-    this.debug();
-    return this.results;
   }
 
   /**
@@ -133,59 +152,56 @@ export class ObjectComparator<T extends NodeInput> implements BaseComparator<T, 
    * @returns indicator whether perfect match was found
    */
   private findPerfectMatch(currentValue: NodeInput): boolean {
-    const perfectMatch = this.nextValues.find(nextValue => {
-      if (this.usedNextValueNodeIds.has(nextValue.nodeId)) {
-        return false;
-      }
-
+    const perfectMatch = [...this.nextValues.values()].find(nextValue => {
       try {
         return deepEqual(currentValue.node.obj, nextValue.node.obj);
       } catch {
         return false;
       }
     });
-
-    if (perfectMatch) {
-      const valueHash = hashObjectLoosely(currentValue.node.obj);
-      const aggregatorReference = this.results.perfectMatchNodes.get(valueHash) ?? {
-        currentNodeId: new Set<number>(),
-        nextNodeId: new Set<number>(),
-      };
-
-      aggregatorReference.currentNodeId.add(currentValue.nodeId);
-      aggregatorReference.nextNodeId.add(perfectMatch.nodeId);
-      this.results.perfectMatchNodes.set(valueHash, aggregatorReference);
-      this.usedCurrentValueNodeIds.add(currentValue.nodeId);
-      this.usedNextValueNodeIds.add(perfectMatch.nodeId);
-      return true;
+    if (!perfectMatch) {
+      return false;
     }
 
-    return false;
+    const valueHash = hashObjectLoosely(currentValue.node.obj);
+    const aggregatorReference = this.results.perfectMatchNodes.get(valueHash) ?? {
+      currentNodeId: new Set<number>(),
+      nextNodeId: new Set<number>(),
+    };
+    aggregatorReference.currentNodeId.add(currentValue.nodeId);
+    aggregatorReference.nextNodeId.add(perfectMatch.nodeId);
+    this.results.perfectMatchNodes.set(valueHash, aggregatorReference);
+    this.currentValues.delete(currentValue.nodeId);
+    this.nextValues.delete(perfectMatch.nodeId);
+
+    return true;
   }
 
   /**
    * Finds all next best matches for the current value in regard to the threshold.
    *
    * @param currentValue
+   * @param nextValues
    */
   private findNextBestMatches(currentValue: NodeInput, nextValues: NodeInput[]): FuzzyEqualSimilarity[] {
-    return nextValues.map(nextValue => {
-      if (this.usedNextValueNodeIds.has(nextValue.nodeId)) {
-        return {similarity: 0, currentValueNodeId: 0, nextValueNodeId: 0};
-      }
-
+    return nextValues.flatMap(nextValue => {
       try {
-        const totalSimilarity: FuzzyEqualComparison = fuzzyEqual(currentValue.node.obj, nextValue.node.obj);
+        const totalSimilarity: FuzzyEqualComparison = fuzzyEqual(currentValue.node.obj, nextValue.node.obj, this.nextBestMatchPropertyThreshold);
         if (totalSimilarity.propertyCount === 0) {
-          return {similarity: 0, currentValueNodeId: currentValue.nodeId, nextValueNodeId: nextValue.nodeId};
+          return [];
         }
 
-        return {similarity: totalSimilarity.matching / totalSimilarity.propertyCount, currentValueNodeId: currentValue.nodeId, nextValueNodeId: nextValue.nodeId};
+        const similarity = totalSimilarity.matching / totalSimilarity.propertyCount;
+        if (similarity < this.threshold) {
+          return [];
+        }
+
+        return [{similarity, currentValueNodeId: currentValue.nodeId, nextValueNodeId: nextValue.nodeId}];
       } catch (error) {
-        console.log('Incomparable Inputs', error, currentValue.nodeId, nextValue.nodeId);
-        return {similarity: 0, currentValueNodeId: currentValue.nodeId, nextValueNodeId: nextValue.nodeId};
+        Logger.error('Incomparable inputs', error, currentValue.nodeId, nextValue.nodeId);
+        return [];
       }
-    }).filter(nextBestMatch => nextBestMatch.similarity >= this.threshold);
+    });
   }
 
   /**
@@ -194,12 +210,13 @@ export class ObjectComparator<T extends NodeInput> implements BaseComparator<T, 
    * @param matches
    */
   private selectNextBestMatches(matches: FuzzyEqualSimilarity[]): void {
+    Logger.info('Starting selection of next best match search for objects');
     const descendingSortedMatches = sort(matches).desc(match => match.similarity);
     const usedCurrentNodes = new Set<number>();
     const usedNextNodes = new Set<number>();
 
     for (const nextBestMatch of descendingSortedMatches) {
-      const currentValue = this.currentValues.find(_currentValue => _currentValue.nodeId === nextBestMatch.currentValueNodeId);
+      const currentValue = this.currentValues.get(nextBestMatch.currentValueNodeId);
       if ((usedCurrentNodes.has(nextBestMatch.currentValueNodeId) || usedNextNodes.has(nextBestMatch.nextValueNodeId)) || !currentValue) {
         continue;
       }
@@ -218,34 +235,27 @@ export class ObjectComparator<T extends NodeInput> implements BaseComparator<T, 
       aggregatorReference.nextNodeId.add(nextBestMatch.nextValueNodeId);
       usedCurrentNodes.add(nextBestMatch.currentValueNodeId);
       usedNextNodes.add(nextBestMatch.nextValueNodeId);
-      this.usedCurrentValueNodeIds.add(nextBestMatch.currentValueNodeId);
-      this.usedNextValueNodeIds.add(nextBestMatch.nextValueNodeId);
+      this.currentValues.delete(nextBestMatch.currentValueNodeId);
+      this.nextValues.delete(nextBestMatch.nextValueNodeId);
       similarityAggregatorReference.set(valueHash, aggregatorReference);
     }
+
+    Logger.info('Finished selection of next best match search for objects');
   }
 
   /**
    * Move available nodes to disjunct nodes.
    */
   private fillDisjunctNodes(): void {
-    for (const currentValue of this.currentValues) {
-      if (this.usedCurrentValueNodeIds.has(currentValue.nodeId)) {
-        continue;
-      }
-
-      this.results.disjunctNodes.currentNodeId.add(currentValue.nodeId);
+    for (const key of this.currentValues.keys()) {
+      this.currentValues.delete(key);
+      this.results.disjunctNodes.currentNodeId.add(key);
     }
 
-    for (const nextValue of this.nextValues) {
-      if (this.usedNextValueNodeIds.has(nextValue.nodeId)) {
-        continue;
-      }
-
-      this.results.disjunctNodes.nextNodeId.add(nextValue.nodeId);
+    for (const key of this.nextValues.keys()) {
+      this.nextValues.delete(key);
+      this.results.disjunctNodes.nextNodeId.add(key);
     }
-
-    this.currentValues = [];
-    this.nextValues = [];
   }
 
   /**
@@ -266,10 +276,10 @@ export class ObjectComparator<T extends NodeInput> implements BaseComparator<T, 
       }
     }
 
-    console.log('----------');
-    console.log('Perfect matches:', perfectMatchCounter);
-    console.log('Next best nodes:', nextBestMatchCounter);
-    console.log('Disjunct nodes:', {current: this.results.disjunctNodes.currentNodeId.size, next: this.results.disjunctNodes.nextNodeId.size});
-    console.log('Available nodes:', {current: this.currentValues.length - this.usedCurrentValueNodeIds.size, next: this.nextValues.length - this.usedNextValueNodeIds.size});
+    Logger.info('----------');
+    Logger.info('Perfect matches:', JSON.stringify(perfectMatchCounter));
+    Logger.info('Next best nodes:', JSON.stringify(nextBestMatchCounter));
+    Logger.info('Disjunct nodes:', JSON.stringify({current: this.results.disjunctNodes.currentNodeId.size, next: this.results.disjunctNodes.nextNodeId.size}));
+    Logger.info('Available nodes:', JSON.stringify({current: this.currentValues.size, next: this.nextValues.size}));
   }
 }

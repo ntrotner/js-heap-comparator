@@ -11,11 +11,11 @@ import {
   type IgnoredNodesMap,
   type ObjectAggregationMap,
   type ObjectMap,
-  type PrimitiveRecord
+  type PrimitiveRecord, PrimitiveTypeMap
 } from "../../../types/index.js";
 import hash from 'object-hash';
 import {
-  cleanCircularReferences
+  cleanCircularReferences, Logger
 } from "../../../helpers/index.js";
 
 // @ts-ignore
@@ -210,8 +210,8 @@ export class ObjectDeepAnalysis extends Memlab.ObjectShallowAnalysis {
   /**
    * Returns the ignored nodes
    */
-  public getPrimitiveNodes(): PrimitiveRecord[] {
-    return [...this.ignoredNodesMapComplete.values()];
+  public getPrimitiveNodes(): PrimitiveTypeMap | undefined {
+    return this.ignoredNodesMapComplete;
   }
 
   /**
@@ -306,7 +306,7 @@ export class ObjectDeepAnalysis extends Memlab.ObjectShallowAnalysis {
     } else if (node.type === 'symbol') {
       this.ignoredNodesMap.set(node.id, node.name);
     } else {
-      console.log('Unknown node type:', node.toJSONString());
+      Logger.error('Unknown node type:', node.toJSONString());
       this.ignoredNodesMap.set(node.id, node.toJSONString());
     }
 

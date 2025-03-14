@@ -9,12 +9,14 @@ import {
   type NextBestFitResponse,
 } from '../types/next-best-fit.js';
 import {
+  Logger,
   writeToStream,
 } from '../../../helpers/index.js';
 
 type Options = {
   threads: number;
   threshold: number;
+  propertyThreshold: number;
 };
 
 export class NextBestFitHub {
@@ -62,7 +64,7 @@ export class NextBestFitHub {
               await worker.terminate();
               resolve(results);
             } else if (parsedData.info) {
-              console.log(parsedData.info);
+              Logger.info(parsedData.info);
             } else {
               results.push(parsedData);
             }
@@ -77,9 +79,14 @@ export class NextBestFitHub {
           await writeToStream(worker.stdin!, JSON.stringify({currentValues: [], nextValues: [nextValue]}));
         }
 
-        await writeToStream(worker.stdin!, JSON.stringify({currentValues: [], nextValues: [], threshold: this.options.threshold}));
+        await writeToStream(worker.stdin!, JSON.stringify({
+          currentValues: [],
+          nextValues: [],
+          threshold: this.options.threshold,
+          propertyThreshold: this.options.propertyThreshold,
+        }));
       } catch (error) {
-        console.log(error);
+        Logger.error(String(error));
         resolve(results);
       }
     });

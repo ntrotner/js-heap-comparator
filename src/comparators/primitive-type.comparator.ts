@@ -3,33 +3,25 @@ import {
   type BaseComparisonResult,
   type PerfectMatchTracker,
   type PrimitiveRecord,
+  type PrimitiveTypeMap,
 } from '../types/index.js';
 import {
   getDefaultValueOfNextBestMatchTracker,
+  Logger,
 } from '../helpers/index.js';
 
 type Options = Record<string, unknown>;
 
-export class PrimitiveTypeComparator<T extends PrimitiveRecord> implements BaseComparator<T, BaseComparisonResult, Options> {
+export class PrimitiveTypeComparator<T extends PrimitiveTypeMap> implements BaseComparator<T, BaseComparisonResult, Options> {
   /**
    * Stores the current nodes to compare.
    */
-  private currentValues: T[] = [];
-
-  /**
-   * Stores the current nodes that have been used in a perfect match.
-   */
-  private readonly usedCurrentValueNodeIds = new Set<number>();
+  private currentValues = new Map() as T;
 
   /**
    * Stores the next nodes to compare.
    */
-  private nextValues: T[] = [];
-
-  /**
-   * Stores the next nodes that have been used in a perfect match.
-   */
-  private readonly usedNextValueNodeIds = new Set<number>();
+  private nextValues = new Map() as T;
 
   /**
    * Stores the comparison results.
@@ -46,28 +38,44 @@ export class PrimitiveTypeComparator<T extends PrimitiveRecord> implements BaseC
   /**
    * @inheritdoc
    */
-  public initialize(currentValues: T[], nextValues: T[], options: Options): void {
+  public initialize(currentValues: T, nextValues: T, options: Options): void {
     this.currentValues = currentValues;
     this.nextValues = nextValues;
   }
 
+  /*+
+    * @inheritdoc
+   */
   public async compare(): Promise<BaseComparisonResult> {
-    console.log('Starting perfect match search for primitive types');
-    const currentValuesLength = this.currentValues.length;
-    for (const [i, value] of this.currentValues.entries()) {
-      this.findPerfectMatch(value);
+    this.orchestratePerfectMatchSearch();
 
-      if (i % 2500 === 0) {
+    this.fillDisjunctNodes();
+    Logger.info('Finished search for primitive types');
+    this.debug();
+    return this.results;
+  }
+
+  /**
+   * Orchestrate the perfect match search for primitive types.
+   */
+  private orchestratePerfectMatchSearch(): void {
+    const currentValuesList = [...this.currentValues.values()];
+    const currentValuesLength = this.currentValues.size;
+    const loggingInterval = Math.max(1, Math.floor(currentValuesLength / 100));
+    let iteration = 0;
+    Logger.info('Starting perfect match search for primitive types with size: ' + currentValuesLength);
+
+    for (const value of currentValuesList) {
+      this.findPerfectMatch(value);
+      iteration += 1;
+
+      if (iteration % loggingInterval === 0) {
         this.debug();
-        console.log(`Progress: ${(i / currentValuesLength * 100).toFixed(2)}%`);
+        Logger.info(`Progress: ${(iteration / currentValuesLength * 100).toFixed(2)}%`);
       }
     }
 
-    console.log('Finished perfect match search for primitive types');
-    this.fillDisjunctNodes();
-    console.log('Finished matching for primitive types');
-
-    return this.results;
+    Logger.info('Finished perfect match search for primitive types');
   }
 
   /**
@@ -76,52 +84,39 @@ export class PrimitiveTypeComparator<T extends PrimitiveRecord> implements BaseC
    * @param currentValue
    * @returns indicator whether perfect match was found
    */
-  private findPerfectMatch(currentValue: T): boolean {
-    const perfectMatch = this.nextValues.find(nextValue =>
-      !this.usedNextValueNodeIds.has(nextValue.n) && currentValue.value === nextValue.value,
-    );
-
-    if (perfectMatch) {
-      const valueHash = currentValue.value?.toString() ?? 'undefined';
-      const aggregatorReference = this.results.perfectMatchNodes.get(valueHash) ?? {
-        currentNodeId: new Set<number>(),
-        nextNodeId: new Set<number>(),
-      };
-
-      aggregatorReference.currentNodeId.add(currentValue.n);
-      aggregatorReference.nextNodeId.add(perfectMatch.n);
-      this.results.perfectMatchNodes.set(valueHash, aggregatorReference);
-      this.usedCurrentValueNodeIds.add(currentValue.n);
-      this.usedNextValueNodeIds.add(perfectMatch.n);
-
-      return true;
+  private findPerfectMatch(currentValue: PrimitiveRecord): boolean {
+    const perfectMatch = [...this.nextValues.values()].find(nextValue => currentValue.value === nextValue.value);
+    if (!perfectMatch) {
+      return false;
     }
 
-    return false;
+    const valueHash = currentValue.value?.toString() ?? 'undefined';
+    const aggregatorReference = this.results.perfectMatchNodes.get(valueHash) ?? {
+      currentNodeId: new Set<number>(),
+      nextNodeId: new Set<number>(),
+    };
+    aggregatorReference.currentNodeId.add(currentValue.n);
+    aggregatorReference.nextNodeId.add(perfectMatch.n);
+    this.results.perfectMatchNodes.set(valueHash, aggregatorReference);
+    this.currentValues.delete(currentValue.n);
+    this.nextValues.delete(perfectMatch.n);
+
+    return true;
   }
 
   /**
    * Move available nodes to disjunct nodes.
    */
   private fillDisjunctNodes(): void {
-    for (const currentValue of this.currentValues) {
-      if (this.usedCurrentValueNodeIds.has(currentValue.n)) {
-        continue;
-      }
-
-      this.results.disjunctNodes.currentNodeId.add(currentValue.n);
+    for (const key of this.currentValues.keys()) {
+      this.currentValues.delete(key);
+      this.results.disjunctNodes.currentNodeId.add(key);
     }
 
-    for (const nextValue of this.nextValues) {
-      if (this.usedNextValueNodeIds.has(nextValue.n)) {
-        continue;
-      }
-
-      this.results.disjunctNodes.nextNodeId.add(nextValue.n);
+    for (const key of this.nextValues.keys()) {
+      this.nextValues.delete(key);
+      this.results.disjunctNodes.nextNodeId.add(key);
     }
-
-    this.currentValues = [];
-    this.nextValues = [];
   }
 
   /**
@@ -134,9 +129,9 @@ export class PrimitiveTypeComparator<T extends PrimitiveRecord> implements BaseC
       perfectMatchCounter.next += value.nextNodeId.size;
     }
 
-    console.log('----------');
-    console.log('Perfect matches:', perfectMatchCounter);
-    console.log('Disjunct nodes:', {current: this.results.disjunctNodes.currentNodeId.size, next: this.results.disjunctNodes.nextNodeId.size});
-    console.log('Available nodes:', {current: this.currentValues.length - this.usedCurrentValueNodeIds.size, next: this.nextValues.length - this.usedNextValueNodeIds.size});
+    Logger.info('----------');
+    Logger.info('Perfect matches:', JSON.stringify(perfectMatchCounter));
+    Logger.info('Disjunct nodes:', JSON.stringify({current: this.results.disjunctNodes.currentNodeId.size, next: this.results.disjunctNodes.nextNodeId.size}));
+    Logger.info('Available nodes:', JSON.stringify({current: this.currentValues.size, next: this.nextValues.size}));
   }
 }

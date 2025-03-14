@@ -3,6 +3,9 @@ import fs, {
   type WriteStream,
 } from 'node:fs';
 import JSONStream from 'JSONStream';
+import {
+  Logger,
+} from './logger.js';
 
 type Options = {
   outputDir: string;
@@ -65,7 +68,7 @@ export class JsonChunkWriter {
           });
         }
       } catch (error) {
-        console.log(error);
+        Logger.error(String(error));
         resolve(false);
       }
     });
@@ -84,7 +87,7 @@ export class JsonChunkWriter {
           resolve(true);
         });
       } catch (error) {
-        console.log(error);
+        Logger.error(String(error));
         resolve(false);
       }
     });
