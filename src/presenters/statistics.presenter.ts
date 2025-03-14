@@ -13,7 +13,7 @@ import {
 } from '../helpers/index.js';
 
 type HeapSizeOfDisjunctNodes = {currentShallowHeapSize: number; nextShallowHeapSize: number};
-type HeapSizeOfNextBestMatch = {sizeByAccuracy: Record<string, {currentShallowHeapSize: number; nextShallowHeapSize: number}>};
+type HeapSizeOfNextBestMatch = {sizeByAccuracy: Record<string, {currentShallowHeapSize: number; nextShallowHeapSize: number}>; amountByAccuracy: Record<string, number>};
 type HeapSizeOfPerfectMatch = {currentShallowHeapSize: number; nextShallowHeapSize: number};
 type TotalHeapSizeDifference = {currentShallowHeapSize: number; nextShallowHeapSize: number; difference: number; percentage: number};
 type TotalNumberOfNodes = {perfectMatchesCurrentNodes: number; perfectMatchesNextNodes: number; nextBestMatchesCurrentNodes: number; nextBestMatchesNextNodes: number; disjunctCurrentNodes: number; disjunctNextNodes: number};
@@ -167,9 +167,11 @@ export class StatisticsPresenter<T extends BaseComparisonNodesInput> implements 
 
     for (const [accuracy, value] of Object.entries(this.comparisonResults.nextBestMatchNodes)) {
       sizeByAccuracy[accuracy] = {currentShallowHeapSize: 0, nextShallowHeapSize: 0};
-      amountByAccuracy[accuracy] = value.size;
+      amountByAccuracy[accuracy] ??= 0;
 
       for (const comparisonResult of value.values()) {
+        amountByAccuracy[accuracy] += comparisonResult.currentNodeId.size;
+
         for (const nodeId of comparisonResult.currentNodeId) {
           const relatedNode = this.currentValues.get(nodeId);
 
@@ -188,7 +190,7 @@ export class StatisticsPresenter<T extends BaseComparisonNodesInput> implements 
       }
     }
 
-    return {sizeByAccuracy};
+    return {sizeByAccuracy, amountByAccuracy};
   }
 
   /**
