@@ -59,9 +59,12 @@ export class DisjunctNodesPresenter<T extends BaseComparisonNodesInput> implemen
     for (const value of this.disjunctNodes.currentNodeId.values()) {
       try {
         const valueToPrint = this.currentValues.get(value);
+        // @ts-expect-error: incomplete typing of obj/value, should be fixed someday
+        const serializedValue: unknown = 'obj' in (valueToPrint ?? {}) ? valueToPrint?.obj : ('value' in (valueToPrint ?? {}) ? valueToPrint?.value : 'undefined');
+
         await this.jsonWriter.write({
           type: 'currentNode',
-          nextValue: util.inspect({n: valueToPrint?.n, size: valueToPrint?.size, obj: valueToPrint?.obj}, {
+          nextValue: util.inspect({n: valueToPrint?.n, size: valueToPrint?.size, serializedValue}, {
             compact: true, depth: 20, breakLength: Infinity, colors: false,
           }),
         });
@@ -71,9 +74,12 @@ export class DisjunctNodesPresenter<T extends BaseComparisonNodesInput> implemen
     for (const value of this.disjunctNodes.nextNodeId.values()) {
       try {
         const valueToPrint = this.nextValues.get(value);
+        // @ts-expect-error: incomplete typing of obj/value, should be fixed someday
+        const serializedValue: unknown = 'obj' in (valueToPrint ?? {}) ? valueToPrint?.obj : ('value' in (valueToPrint ?? {}) ? valueToPrint?.value : undefined);
+
         await this.jsonWriter.write({
           type: 'nextNode',
-          nextValue: util.inspect({n: valueToPrint?.n, size: valueToPrint?.size, obj: valueToPrint?.obj}, {
+          nextValue: util.inspect({n: valueToPrint?.n, size: valueToPrint?.size, serializedValue}, {
             compact: true, depth: 20, breakLength: Infinity, colors: false,
           }),
         });
