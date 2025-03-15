@@ -71,8 +71,8 @@ export class V8Comparator implements BaseHeapComparator {
 
     const primitiveTypeComparator = new PrimitiveTypeComparator();
     primitiveTypeComparator.initialize(
-      currentHeapNodesPrimitiveType,
-      nextHeapNodesPrimitiveType,
+      new Map([...currentHeapNodesPrimitiveType.entries()].map(([nodeId, primitiveType]) => ([nodeId, primitiveType]))),
+      new Map([...nextHeapNodesPrimitiveType.entries()].map(([nodeId, primitiveType]) => ([nodeId, primitiveType]))),
       {},
     );
     const primitiveTypeComparatorResults = await primitiveTypeComparator.compare();
@@ -90,11 +90,11 @@ export class V8Comparator implements BaseHeapComparator {
     const objectComparatorResults = await objectComparator.compare();
 
     const fileWriterOptions = {filePath: this.options.presenterFilePath};
-    const allCurrentHeapNodes = new Map([...currentHeapNodesMap.values(), ...currentHeapNodesPrimitiveType.values()]
-      .map(node => ([node.n, {ids: [], obj: {class: 'None', object: {}}, ...node}])),
+    const allCurrentHeapNodes = new Map([...currentHeapNodesMap.entries(), ...currentHeapNodesPrimitiveType.entries()]
+      .map(([id, node]) => ([id, node])),
     );
-    const allNextHeapNodes = new Map([...nextHeapNodesMap.values(), ...nextHeapNodesPrimitiveType.values()]
-      .map(node => ([node.n, {ids: [], obj: {class: 'None', object: {}}, ...node}])),
+    const allNextHeapNodes = new Map([...nextHeapNodesMap.entries(), ...nextHeapNodesPrimitiveType.entries()]
+      .map(([id, node]) => ([id, node])),
     );
 
     if (this.options.activePresenter.perfectMatch) {
@@ -102,7 +102,7 @@ export class V8Comparator implements BaseHeapComparator {
 
       for (const {comparisonType, results} of comparisonTypes) {
         const perfectMatchPresenter = new PerfectMatchPresenter();
-        perfectMatchPresenter.initialize(allCurrentHeapNodes, allNextHeapNodes, objectComparatorResults.perfectMatchNodes, {...fileWriterOptions, fileName: `perfect-match.${comparisonType}.json`});
+        perfectMatchPresenter.initialize(allCurrentHeapNodes, allNextHeapNodes, results.perfectMatchNodes, {...fileWriterOptions, fileName: `perfect-match.${comparisonType}.json`});
         await perfectMatchPresenter.report();
       }
     }

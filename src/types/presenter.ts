@@ -6,12 +6,13 @@ import {
 } from './comparator.js';
 import type {
   ObjectRecord,
+  PrimitiveRecord,
 } from './custom-memlab.js';
 
 /**
  * Base input for all presenters.
  */
-export type BaseComparisonNodesInput = Map<number, ObjectRecord>;
+export type BaseComparisonNodesInput = Map<number, ObjectRecord | PrimitiveRecord>;
 
 /**
  * Base options for all presenters.
